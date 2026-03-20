@@ -309,6 +309,28 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
   <div class="mirobot-label">RODRIGO</div>
 </div>
 
+<!-- PRE-FRAME: Conversion optimization -->
+<div id="preframe" style="position:fixed;inset:0;background:#070A0D;color:#E8EDF2;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;text-align:center;padding:24px">
+  <div style="max-width:480px">
+    <div style="font-family:var(--fm);font-size:9px;letter-spacing:.2em;color:var(--text3);margin-bottom:24px">MIRO.DX · CLÍNICA MIRÓ</div>
+    <h1 style="font-family:var(--fu);font-size:clamp(28px,5vw,42px);font-weight:800;margin-bottom:18px;line-height:1.1">
+      Esto no es una evaluación.
+    </h1>
+    <p style="font-size:clamp(16px,2.5vw,20px);color:rgba(232,237,242,0.65);margin-bottom:8px;line-height:1.5">
+      Es una segunda opinión objetiva.
+    </p>
+    <p style="font-size:clamp(14px,2vw,17px);color:rgba(232,237,242,0.35);margin-bottom:36px;line-height:1.6">
+      Sin intereses. Sin suposiciones.<br>Solo datos + criterio clínico.
+    </p>
+    <button onclick="document.getElementById('preframe').style.display='none'" style="font-family:var(--fu);padding:16px 36px;background:#00E5A0;border:none;color:#070A0D;font-weight:800;font-size:14px;cursor:pointer;border-radius:3px;letter-spacing:.04em;transition:all .2s">
+      Entender mi caso →
+    </button>
+    <div style="margin-top:24px;font-family:var(--fm);font-size:9px;color:rgba(232,237,242,0.2);letter-spacing:.1em">
+      2 MINUTOS · SIN COSTO · CON IA
+    </div>
+  </div>
+</div>
+
 <div class="console">
 <div class="topbar">
   <div class="brand"><div class="brand-dot"></div>MIRO.DX</div>
@@ -500,16 +522,17 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
           </div>
         </div>
         <div style="border:1px solid var(--line2);border-radius:4px;padding:14px;margin-bottom:16px;background:var(--bg3)">
-          <div class="mono accent" style="font-size:9px;margin-bottom:8px">¿POR QUÉ IA?</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.7">La IA no reemplaza al dentista — le da superpoderes. Otro par de ojos que nunca se cansa, que detecta lo que el ojo humano puede pasar por alto. Una supercomputadora en la consulta.</div>
+          <div class="mono accent" style="font-size:9px;margin-bottom:8px">¿POR QUÉ ESTO ES DISTINTO?</div>
+          <div style="font-size:clamp(12px,1.2vw,14px);color:var(--text2);line-height:1.7">Compara tu caso con miles de diagnósticos reales. Detecta lo que el ojo humano puede pasar por alto. Reduce el margen de error. Y te muestra la verdad, no una opinión más.</div>
         </div>
         <div style="border:1px solid rgba(201,168,124,.25);border-radius:4px;padding:16px;margin-bottom:18px;background:rgba(201,168,124,.04)">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-family:var(--fu);font-size:15px;font-weight:700;color:var(--muted)">Todo lo anterior</span><span class="mono" style="font-size:20px;color:var(--muted)">$49.000</span></div>
+          <div style="font-size:clamp(13px,1.5vw,15px);color:var(--text2);line-height:1.6;margin-bottom:10px">No estás pagando por una evaluación.<br><span style="color:var(--text)">Estás pagando por saber cuál es el diagnóstico correcto.</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-family:var(--fu);font-size:15px;font-weight:700;color:var(--muted)">Con evidencia. No con opinión.</span><span class="mono" style="font-size:20px;color:var(--muted)">$49.000</span></div>
           <div style="font-size:11px;color:var(--text2);line-height:1.7">Si tomas tratamiento, se abona al total. Si no, todo es tuyo.</div>
           <div class="mono t3" style="font-size:8px;margin-top:6px">Ningún resultado es 100% definitivo.</div>
         </div>
         <div style="display:flex;gap:9px;flex-wrap:wrap">
-          <button class="btn-gold" style="flex:1" onclick="goPay()">💳 PAGAR $49.000 →</button>
+          <button class="btn-gold" style="flex:1" onclick="goPay()">QUIERO CERTEZA →</button>
         </div>
         <div id="postPayArea" style="display:none;margin-top:16px;padding:14px;border:1px solid rgba(0,229,160,.2);border-radius:4px;background:rgba(0,229,160,.04);text-align:center">
           <div class="mono accent" style="font-size:9px;margin-bottom:8px">✓ PAGO CONFIRMADO</div>
@@ -588,7 +611,7 @@ async function say(txt,cb,v){
 function toggleMute(){S.muted=!S.muted;const b=document.getElementById('vBtn');if(S.muted){b.classList.add('off');document.getElementById('vIco').textContent='🔇';document.getElementById('vTxt').textContent='MUTE';if(S.audio){S.audio.pause();S.audio=null}document.getElementById('botAvatar').classList.remove('speaking')}else{b.classList.remove('off');document.getElementById('vIco').textContent='🔊';document.getElementById('vTxt').textContent='RODRIGO'}}
 
 // FLOW
-function start(){show(1);say('Hola. Soy Rodrigo, tu asistente clínico de Clínica Miró. Me vas a ver aquí abajo a la derecha. Si tienes una duda, haz click sobre mí. Escribe tu nombre y email, y presiona continuar.')}
+function start(){show(1);say('Antes de empezar, algo importante. Esto no es una evaluación. Es una segunda opinión, sin intereses. Y probablemente va a explicar por qué has recibido diagnósticos distintos. Escribe tu nombre y email, y presiona continuar.')}
 
 function goAnamnesis(){
   const n=document.getElementById('nameIn').value.trim();if(!n)return;
@@ -875,14 +898,14 @@ function buildOdonto(){
 function toothAnim(n,st){const c=document.getElementById('tc'+n),t=document.getElementById('tn'+n);if(!c)return;const col={ok:'var(--accent)',warn:'#FFA500',alert:'var(--warn)'}[st]||'var(--text3)';c.style.stroke='rgba(0,229,160,.9)';c.style.filter='drop-shadow(0 0 6px rgba(0,229,160,.5))';setTimeout(()=>{c.style.stroke=col;c.style.filter='';if(t)t.setAttribute('fill',col)},400)}
 
 function runScan(){
-  setStep(4);show(4);buildOdonto();document.getElementById('mTitle').textContent='ANÁLISIS IA';stat('Procesando...');
-  say('Procesando con las seis aplicaciones de HUMANA punto AI.');
+  setStep(4);show(4);buildOdonto();document.getElementById('mTitle').textContent='ANÁLISIS IA';stat('Contrastando con miles de casos...');
+  say('Ahora voy a contrastar tu caso con miles de diagnósticos reales. Buscando patrones que el ojo humano puede no ver. Y sobre todo, buscando inconsistencias. Porque ahí es donde nacen los diagnósticos distintos.');
   let si=0;const st=setInterval(()=>{if(si>=SCANS.length){clearInterval(st);return}const s=SCANS[si];document.getElementById('scanBar').style.width=s.p+'%';document.getElementById('scanPct').textContent=s.p+'%';document.getElementById('scanStat').textContent=s.m;if(s.c){document.getElementById('c-'+s.c).classList.add('on');document.getElementById('a-'+s.c).textContent='OK';document.getElementById('a-'+s.c).style.color='var(--accent)'}si++},400);
   const TP=[{t:[18,17,16,28,27,26],s:'ok'},{t:[15,25],s:'warn'},{t:[14,13,12,11,21,22,23,24],s:'ok'},{t:[48,47,46,38,37,36],s:'ok'},{t:[45,35],s:'alert'},{t:[44,43,42,41,31,32,33,34],s:'ok'}];
   let ti=0;const tt=setInterval(()=>{if(ti>=TP.length){clearInterval(tt);return}TP[ti].t.forEach((n,i)=>setTimeout(()=>toothAnim(n,TP[ti].s),i*80));ti++},550);
   const risk=compRisk();S.risk=risk;
   setTimeout(()=>{animGauge(risk);document.getElementById('v-risk').textContent=risk+'/100'},2500);
-  setTimeout(()=>{clearInterval(st);clearInterval(tt);document.getElementById('scanBar').style.width='100%';document.getElementById('scanPct').textContent='100%';document.getElementById('scanStat').textContent='Completado.';stat('Listo.');setTimeout(showRes,800)},4200);
+  setTimeout(()=>{clearInterval(st);clearInterval(tt);document.getElementById('scanBar').style.width='100%';document.getElementById('scanPct').textContent='100%';document.getElementById('scanStat').textContent='Análisis completo.';stat('Lo que realmente está pasando.');setTimeout(showRes,800)},4200);
 }
 
 function compRisk(){let s=28;const a=S.answers;if(a.last_visit==='Más de 3 años')s+=26;else if(a.last_visit==='1 a 3 años')s+=16;if(a.pain==='Dolor constante')s+=30;else if(a.pain==='Dolor intermitente')s+=18;else if(a.pain==='Sensibilidad al frío/calor')s+=10;if(a.missing==='3 o más')s+=14;else if(a.missing==='1 a 2')s+=7;return Math.min(s,97)}
@@ -891,7 +914,8 @@ function animGauge(v){const c=213.63,f=document.getElementById('gF'),n=document.
 
 // RESULTS with AI findings or fallback
 function showRes(){
-  setStep(5);show(5);document.getElementById('mTitle').textContent='RESULTADOS';
+  setStep(5);show(5);document.getElementById('mTitle').textContent='LO QUE ENCONTRAMOS';
+  say('Esto es importante. Lo que estás viendo explica por qué podrías haber recibido diagnósticos diferentes. Y eso cambia completamente el tratamiento.');
   const fn=S.name.split(' ')[0];
   const findings=S.aiFindings?.findings?.length>0?S.aiFindings.findings.map(f=>({...f,score:f.confidence||50,color:f.level==='alert'?'var(--warn)':f.level==='warn'?'#FFA500':'var(--accent)'})):buildFallback();
   const vis=findings.slice(0,3),hid=findings.slice(3);
@@ -1055,11 +1079,11 @@ async function goStep6(){
     {who:'valeria',txt:'El costo es de cuarenta y nueve mil pesos. Si tomas tratamiento, se abona al total. Si no, todo es tuyo.'}
   ];
   
-  say('La evaluación clínica es la mejor parte. Dura una hora. Incluye radiografía panorámica, análisis en vivo con tu especialista de Clínica Miró, el copiloto de inteligencia artificial activo, alternativas de tratamiento con visuales, y tu documento CLARITY.',()=>{
+  say('Esto no es un diagnóstico final. Pero ya muestra algo importante. La verdad puede variar dependiendo de quién la mire. Aquí es donde eliminamos la duda.',()=>{
     nc.innerHTML+=`<div class="narr-card rodrigo show"><div class="narr-who">RODRIGO</div><div class="narr-text">Rx panorámica + análisis en vivo + COPILOT IA + CLARITY 12 pág.</div></div>`;
-    say('Vas a ver tu boca y entender qué pasa. Si tienes caries, vas a ver qué ocurre si la dejas seis meses. Si te falta un diente, cuánto tiempo tienes. Todo con proyecciones, sin garantías absolutas.',()=>{
+    say('Vas a ver tu boca y entender qué pasa. Si tienes caries, vas a ver qué ocurre si la dejas seis meses. Si te falta un diente, cuánto tiempo tienes. Todo con proyecciones. Con IA y con un especialista.',()=>{
       nc.innerHTML+=`<div class="narr-card rodrigo show"><div class="narr-who">RODRIGO</div><div class="narr-text">Proyecciones visuales: qué pasa si no tratas en 6, 12, 18 meses.</div></div>`;
-      say('El costo es de cuarenta y nueve mil pesos. Incluye todo lo anterior. Si tomas un tratamiento, ese monto se abona al total. Si no, todo es tuyo: informe, imágenes, diagnóstico. Sin compromiso. Para continuar, realiza el pago y después agendas tu hora con tu especialista.',()=>{
+      say('No estás pagando por una evaluación. Estás pagando por saber cuál es el diagnóstico correcto. Con evidencia, no con opinión. Si tomas un tratamiento, ese monto se abona al total. Si no, todo es tuyo.',()=>{
         nc.innerHTML+=`<div class="narr-card valeria show"><div class="narr-who">VALERIA</div><div class="narr-text">$49.000 → se abona si tomas tratamiento. Paga primero, agenda después.</div></div>`;
       },'v')
     })
