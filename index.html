@@ -1102,7 +1102,7 @@ async function goPay(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         name:S.name,
-        email:S.email||'<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9aeafbf9f3fff4eeffdaf9f6f3f4f3f9fbf7f3e8f5b4f9f6">[email&#160;protected]</a>',
+        email:S.email||('paciente'+'@'+'clinicamiro.cl'),
         sessionId:sid,
         motivo:S.answers.motivo||''
       })
