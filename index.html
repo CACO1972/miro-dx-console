@@ -1140,7 +1140,7 @@ async function goPay(){
         // Stop polling after 5 min (30 attempts x 10s)
         if(pollCount>=30){
           clearInterval(payPollInterval);payPollInterval=null;
-          payBtn.textContent='💳 VERIFICAR PAGO';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
+          payBtn.textContent='VERIFICAR PAGO';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
           payBtn.onclick=()=>manualVerify(data.token);
         }
       },10000); // Check every 10 seconds
@@ -1169,11 +1169,11 @@ async function goPay(){
     }
   }catch(e){
     log('FLOW','warn',e.message);
-    payBtn.textContent='💳 PAGAR $49.000 →';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
+    payBtn.textContent='QUIERO CERTEZA →';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
     payBtn.onclick=goPay;
     say('Hubo un problema con el sistema de pago. Puedes pagar por WhatsApp o en la clínica.');
     const fb=document.createElement('div');fb.style.cssText='margin-top:12px;text-align:center';
-    fb.innerHTML=`<a href="https://wa.me/56974157966?text=Hola%2C%20quiero%20pagar%20mi%20evaluación%20MIRO.DX%20${sid}" target="_blank" class="btn-s" style="text-decoration:none;width:100%;justify-content:center">PAGAR VÍA WHATSAPP →</a>`;
+    fb.innerHTML=`<a href="https://wa.me/56974157966?text=Hola%2C%20quiero%20pagar%20mi%20evaluación%20MIRO.DX%20${sid}" target="_blank" class="btn-s" style="text-decoration:none;width:100%;justify-content:center">CERTEZA VÍA WHATSAPP →</a>`;
     payBtn.parentElement.after(fb);
   }
 }
@@ -1188,8 +1188,8 @@ async function manualVerify(token){
     });
     const result=await check.json();
     if(result.paid){onPaymentConfirmed()}
-    else{payBtn.textContent='💳 PAGO NO CONFIRMADO — REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';say('Aún no recibimos la confirmación. Si ya pagaste, espera unos segundos e intenta de nuevo.')}
-  }catch(e){payBtn.textContent='💳 REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto'}
+    else{payBtn.textContent='NO CONFIRMADO — REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';say('Aún no recibimos la confirmación. Si ya pagaste, espera unos segundos e intenta de nuevo.')}
+  }catch(e){payBtn.textContent='REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto'}
 }
 
 function onPaymentConfirmed(){
