@@ -971,7 +971,6 @@ function showRes(){
       </div>
       <div><div style="font-family:var(--fm);font-size:9px;color:var(--text3)">SCORE DE RIESGO</div><div style="font-family:var(--fu);font-size:14px;font-weight:700;color:${S.risk>65?'var(--warn)':S.risk>40?'#FFA500':'var(--accent)'}">${S.risk>65?'MODERADO':S.risk>40?'BAJO':'PREVENTIVO'}</div><div style="font-size:10px;color:var(--text3)">${S.risk}/100</div></div>
     </div>
-    <script>if(window.innerWidth<=768)document.querySelector('.mobile-gauge').style.display='flex'</script>
 
     ${imgOverlay}
 
@@ -998,6 +997,9 @@ function showRes(){
       <button class="btn-p" onclick="goStep6()" style="flex:1">CONOCER LA EVALUACIÓN COMPLETA →</button>
     </div>
     <div class="mono t3" style="font-size:8px;margin-top:9px">Pre-evaluación orientativa · No reemplaza diagnóstico clínico · Ley 20.584</div>`;
+
+  // Mobile gauge visibility
+  if(window.innerWidth<=768){const mg=document.querySelector('.mobile-gauge');if(mg)mg.style.display='flex';}
 
   // Animate score bars
   setTimeout(()=>document.querySelectorAll('.sfill').forEach(el=>{
