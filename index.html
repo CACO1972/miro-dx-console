@@ -371,8 +371,8 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
     <!-- S0: PLAY -->
     <div class="screen active" id="s-0"><div class="play-hero"><div class="play-btn" onclick="start()"><div class="play-icon"></div></div><div style="font-family:var(--fu);font-size:20px;font-weight:800;margin-top:8px;">MIRO.DX</div><div style="font-size:12px;color:var(--text2);text-align:center;max-width:280px;">Análisis dental con IA<br><span class="t3" style="font-size:11px;">Rodrigo te guiará por voz</span></div></div></div>
 
-    <!-- S1: NAME -->
-    <div class="screen" id="s-1"><div class="qwrap"><div class="qnum">01 · IDENTIFICACIÓN</div><div class="qtxt">¿Cómo te llamas?</div><div style="display:flex;flex-direction:column;gap:7px"><input class="cinput" id="nameIn" placeholder="Tu nombre" style="width:100%"><input class="cinput" id="emailIn" placeholder="Tu email (para enviar resultados)" type="email" style="width:100%" onkeydown="if(event.key==='Enter')goAnamnesis()"><button class="btn-p" onclick="goAnamnesis()" style="align-self:flex-end">CONTINUAR →</button></div><div class="mt16 mono t3" style="font-size:9px;line-height:1.8">> Análisis gratuito · Ley 21.719</div></div></div>
+    <!-- S1: IDENTIFICACIÓN — captura obligatoria 4 campos -->
+    <div class="screen" id="s-1"><div class="qwrap"><div class="qnum">01 · IDENTIFICACIÓN</div><div class="qtxt">¿Cómo te llamas?</div><div style="display:flex;flex-direction:column;gap:7px"><input class="cinput" id="nameIn" placeholder="Nombre completo *" style="width:100%"><input class="cinput" id="rutIn" placeholder="RUT (12.345.678-9) *" style="width:100%"><input class="cinput" id="emailIn" placeholder="Email (para recibir resultados) *" type="email" style="width:100%"><input class="cinput" id="wsIn" placeholder="WhatsApp (+56 9 xxxx xxxx) *" type="tel" style="width:100%" onkeydown="if(event.key==='Enter')goAnamnesis()"><div id="s1Err" class="mono" style="font-size:10px;color:var(--warn);min-height:14px"></div><button class="btn-p" onclick="goAnamnesis()" style="align-self:flex-end">CONTINUAR →</button></div><div class="mt16 mono t3" style="font-size:9px;line-height:1.8">> Análisis GRATUITO por tiempo limitado<br>> Datos protegidos · Ley 21.719</div></div></div>
 
     <!-- S2: ANAMNESIS -->
     <div class="screen" id="s-2"><div class="qwrap" id="qWrap"></div></div>
@@ -526,21 +526,18 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
           <div style="font-size:clamp(12px,1.2vw,14px);color:var(--text2);line-height:1.7">Compara tu caso con miles de diagnósticos reales. Detecta lo que el ojo humano puede pasar por alto. Reduce el margen de error. Y te muestra la verdad, no una opinión más.</div>
         </div>
         <div style="border:1px solid rgba(201,168,124,.25);border-radius:4px;padding:16px;margin-bottom:18px;background:rgba(201,168,124,.04)">
-          <div style="font-size:clamp(13px,1.5vw,15px);color:var(--text2);line-height:1.6;margin-bottom:10px">No estás pagando por una evaluación.<br><span style="color:var(--text)">Estás pagando por saber cuál es el diagnóstico correcto.</span></div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-family:var(--fu);font-size:15px;font-weight:700;color:var(--muted)">Con evidencia. No con opinión.</span><span class="mono" style="font-size:20px;color:var(--muted)">$49.000</span></div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.7">Si tomas tratamiento, se abona al total. Si no, todo es tuyo.</div>
+          <div style="font-size:clamp(13px,1.5vw,15px);color:var(--text2);line-height:1.6;margin-bottom:10px">No estás pagando por una evaluación.<br><span style="color:var(--text)">Estás recibiendo una segunda opinión sin intereses.</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="font-family:var(--fu);font-size:15px;font-weight:700;color:var(--muted)">Con evidencia. No con opinión.</span><span class="mono" style="font-size:18px;color:var(--accent);letter-spacing:1px">GRATIS</span></div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.7">Por tiempo limitado. Programa piloto MIRO.DX.</div>
           <div class="mono t3" style="font-size:8px;margin-top:6px">Ningún resultado es 100% definitivo.</div>
         </div>
-        <div style="display:flex;gap:9px;flex-wrap:wrap">
-          <button class="btn-gold" style="flex:1" onclick="goPay()">QUIERO CERTEZA →</button>
+        <div style="margin-bottom:14px"><div class="mono accent" style="font-size:10px;margin-bottom:10px;text-align:center">SIGUIENTE PASO · ELIGE CÓMO CONTINUAR</div></div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn-gold" style="border:none;cursor:pointer;text-align:center;padding:14px;font-family:inherit;font-size:inherit;width:100%" onclick="goSchedule()">AGENDAR CON MI ESPECIALISTA →</button>
+          <a href="https://wa.me/56974157966?text=Hola%2C%20hice%20mi%20an%C3%A1lisis%20MIRO.DX%20y%20quiero%20conversar%20mi%20caso" target="_blank" class="btn-p" style="text-decoration:none;text-align:center;padding:12px" onclick="trackCTA('whatsapp')">CONVERSAR MI CASO POR WHATSAPP</a>
+          <a href="https://wa.me/56974157966?text=Hola%2C%20necesito%20asistencia%20humana%20con%20MIRO.DX" target="_blank" class="btn-ghost" style="text-decoration:none;text-align:center;padding:10px" onclick="trackCTA('human')">PREFIERO HABLAR CON UN HUMANO</a>
         </div>
-        <div id="postPayArea" style="display:none;margin-top:16px;padding:14px;border:1px solid rgba(0,229,160,.2);border-radius:4px;background:rgba(0,229,160,.04);text-align:center">
-          <div class="mono accent" style="font-size:9px;margin-bottom:8px">✓ PAGO CONFIRMADO</div>
-          <div style="font-size:13px;color:var(--text);margin-bottom:12px">Ahora agenda tu hora con tu especialista</div>
-          <button class="btn-p" onclick="goSchedule()" style="width:100%">AGENDAR MI HORA →</button>
-        </div>
-        <div style="display:flex;justify-content:center;margin-top:12px;gap:16px">
-          <a href="https://wa.me/56974157966?text=Hola%2C%20hice%20mi%20pre-evaluación%20MIRO.DX" target="_blank" class="btn-ghost" style="text-decoration:none">WHATSAPP</a>
+        <div style="display:flex;justify-content:center;margin-top:14px;gap:16px">
           <button class="btn-ghost" onclick="resetAll()">NUEVA SESIÓN</button>
         </div>
       </div>
@@ -560,7 +557,7 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 </div>
 
 <div class="statusbar">
-  <div class="sitem"><div class="sdot"></div>SUPABASE</div><div class="sitem"><div class="sdot"></div>GEMINI</div><div class="sitem"><div class="sdot"></div>ELEVENLABS</div><div class="sitem"><div class="sdot off"></div>FLOW.CL</div>
+  <div class="sitem"><div class="sdot"></div>SUPABASE</div><div class="sitem"><div class="sdot"></div>GEMINI</div><div class="sitem"><div class="sdot"></div>ELEVENLABS</div><div class="sitem"><div class="sdot"></div>LEAD.DB</div>
   <div class="sitem" style="margin-left:auto"><span class="mono t3" style="font-size:8px" id="statMsg">Listo</span></div>
 </div>
 </div>
@@ -572,9 +569,43 @@ const TTS_PROXY='https://jipldlklzobiytkvxokf.supabase.co/functions/v1/tts-proxy
 const SUPA_FN='https://jipldlklzobiytkvxokf.supabase.co/functions/v1';
 
 // STATE
-const S={name:'',email:'',answers:{},risk:0,muted:false,audio:null,photo:null,photos:null,aiFindings:null,stream:null};
+const S={name:'',rut:'',email:'',whatsapp:'',answers:{},risk:0,muted:false,audio:null,photo:null,photos:null,aiFindings:null,stream:null,utm:{source:'',medium:'',campaign:'',content:''}};
+
+// Capturar UTMs de la URL al cargar
+(function captureUTM(){
+  try{
+    const p=new URLSearchParams(window.location.search);
+    S.utm.source=p.get('utm_source')||'direct';
+    S.utm.medium=p.get('utm_medium')||'';
+    S.utm.campaign=p.get('utm_campaign')||'';
+    S.utm.content=p.get('utm_content')||'';
+  }catch(e){}
+})();
+
+// Si corremos como iframe en clinicamiro.cl, aceptar UTMs del landing parent
+window.addEventListener('message',function(e){
+  // Aceptar solo de orígenes Clínica Miró
+  if(!/clinicamiro\.cl|miro-dx-console\.vercel\.app|localhost/.test(e.origin))return;
+  if(e.data && e.data.type==='miro_utm' && e.data.utm){
+    S.utm.source=e.data.utm.source||S.utm.source;
+    S.utm.medium=e.data.utm.medium||S.utm.medium;
+    S.utm.campaign=e.data.utm.campaign||S.utm.campaign;
+    S.utm.content=e.data.utm.content||S.utm.content;
+  }
+});
 let curQ=0;
 const sid='DX-'+Math.random().toString(36).slice(2,6).toUpperCase();
+
+// Track page visit inmediatamente — mide tráfico aunque el paciente abandone
+(async function trackVisit(){
+  try{
+    await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/miro-dx-track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      event:'visit',session_id:sid,
+      utm_source:S.utm.source,utm_medium:S.utm.medium,utm_campaign:S.utm.campaign,utm_content:S.utm.content,
+      user_agent:navigator.userAgent.slice(0,200),referrer:document.referrer.slice(0,200)
+    })});
+  }catch(e){/* silent */}
+})();
 document.getElementById('sid').textContent=sid;
 setInterval(()=>document.getElementById('clk').textContent=new Date().toLocaleTimeString('es-CL'),1000);
 
@@ -611,12 +642,46 @@ async function say(txt,cb,v){
 function toggleMute(){S.muted=!S.muted;const b=document.getElementById('vBtn');if(S.muted){b.classList.add('off');document.getElementById('vIco').textContent='🔇';document.getElementById('vTxt').textContent='MUTE';if(S.audio){S.audio.pause();S.audio=null}document.getElementById('botAvatar').classList.remove('speaking')}else{b.classList.remove('off');document.getElementById('vIco').textContent='🔊';document.getElementById('vTxt').textContent='RODRIGO'}}
 
 // FLOW
-function start(){show(1);say('Antes de empezar, algo importante. Esto no es una evaluación. Es una segunda opinión, sin intereses. Y probablemente va a explicar por qué has recibido diagnósticos distintos. Escribe tu nombre y email, y presiona continuar.')}
+function start(){show(1);say('Antes de empezar, algo importante. Esto no es una evaluación. Es una segunda opinión, sin intereses. Y probablemente va a explicar por qué has recibido diagnósticos distintos. Por ahora es completamente gratis. Solo necesito tu nombre, RUT, email y WhatsApp para enviarte los resultados.')}
 
-function goAnamnesis(){
-  const n=document.getElementById('nameIn').value.trim();if(!n)return;
+function validateRut(r){
+  // Validación básica de RUT chileno: formato y dígito verificador
+  r=r.replace(/[^0-9kK]/g,'').toUpperCase();
+  if(r.length<8||r.length>9)return false;
+  const dv=r.slice(-1),body=r.slice(0,-1);
+  let s=0,m=2;
+  for(let i=body.length-1;i>=0;i--){s+=parseInt(body[i])*m;m=m<7?m+1:2;}
+  const calc=11-(s%11),dvCalc=calc===11?'0':calc===10?'K':String(calc);
+  return dv===dvCalc;
+}
+function validateWS(w){
+  // Acepta +56 9 xxxx xxxx o variantes; debe tener al menos 8 dígitos tras el código
+  const d=w.replace(/[^0-9]/g,'');
+  return d.length>=9 && d.length<=12;
+}
+function validateEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);}
+
+async function goAnamnesis(){
+  const n=document.getElementById('nameIn').value.trim();
+  const rut=document.getElementById('rutIn').value.trim();
   const email=document.getElementById('emailIn').value.trim();
-  S.name=n;S.email=email;document.getElementById('v-name').textContent=n.split(' ')[0].toUpperCase();
+  const ws=document.getElementById('wsIn').value.trim();
+  const err=document.getElementById('s1Err');
+  err.textContent='';
+  if(!n||n.length<2){err.textContent='> Ingresa tu nombre completo';return;}
+  if(!rut||!validateRut(rut)){err.textContent='> RUT inválido (formato 12345678-9)';return;}
+  if(!email||!validateEmail(email)){err.textContent='> Email inválido';return;}
+  if(!ws||!validateWS(ws)){err.textContent='> WhatsApp inválido (incluye código país)';return;}
+  S.name=n;S.rut=rut;S.email=email;S.whatsapp=ws;
+  document.getElementById('v-name').textContent=n.split(' ')[0].toUpperCase();
+  // Guardar lead inmediatamente — la consola ya está "comprometida" con el contacto
+  try{
+    await fetch(SUPA_FN+'/miro-dx-track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      event:'lead_created',session_id:sid,name:n,rut:rut,email:email,whatsapp:ws,
+      utm_source:S.utm.source,utm_medium:S.utm.medium,utm_campaign:S.utm.campaign,utm_content:S.utm.content
+    })});
+    log('LEAD','ok','Contacto registrado');
+  }catch(e){log('LEAD','warn','No se pudo registrar contacto: '+e.message);}
   setStep(2);show(2);document.getElementById('mTitle').textContent='ANAMNESIS';
   say('Gracias, '+n.split(' ')[0]+'. Cinco preguntas rápidas.', ()=>renderQ(0));
 }
@@ -1092,122 +1157,28 @@ async function goStep6(){
   })
 }
 
-let payPollInterval=null;
-async function goPay(){
-  const payBtn=document.querySelector('.btn-gold');
-  payBtn.textContent='⏳ Procesando...';payBtn.style.opacity='.6';payBtn.style.pointerEvents='none';
-  log('FLOW','info','Creando orden de pago...');
-  
+// Tracking de CTAs post-análisis (reemplaza el flujo de pago Flow.cl)
+async function trackCTA(action){
+  log('CTA','ok','Click: '+action.toUpperCase());
   try{
-    const res=await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/flow-create-payment',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+    await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/miro-dx-track',{
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        name:S.name,
-        email:S.email||('paciente'+'@'+'clinicamiro.cl'),
-        sessionId:sid,
-        motivo:S.answers.motivo||''
+        event:'cta_click',session_id:sid,action:action,
+        name:S.name,rut:S.rut,email:S.email,whatsapp:S.whatsapp,
+        motivo:S.answers.motivo||'',risk:S.risk,
+        utm_source:S.utm.source,utm_medium:S.utm.medium,
+        utm_campaign:S.utm.campaign,utm_content:S.utm.content
       })
     });
-    const data=await res.json();
-    
-    if(data.success&&data.paymentUrl){
-      S.flowOrder=data.flowOrder;
-      log('FLOW','ok','Orden '+data.flowOrder+' → redirigiendo');
-      
-      // Open Flow payment page
-      window.open(data.paymentUrl,'_blank');
-      
-      // Update button to show waiting state
-      payBtn.textContent='⏳ ESPERANDO CONFIRMACIÓN DE PAGO...';
-      payBtn.style.opacity='.7';payBtn.style.pointerEvents='none';
-      
-      // Start polling for payment confirmation
-      let pollCount=0;
-      payPollInterval=setInterval(async()=>{
-        pollCount++;
-        log('FLOW','info','Verificando pago... ('+pollCount+')');
-        try{
-          const check=await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/flow-confirm',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({token:data.token})
-          });
-          const result=await check.json();
-          if(result.paid){
-            clearInterval(payPollInterval);payPollInterval=null;
-            onPaymentConfirmed();
-          }
-        }catch(e){}
-        // Stop polling after 5 min (30 attempts x 10s)
-        if(pollCount>=30){
-          clearInterval(payPollInterval);payPollInterval=null;
-          payBtn.textContent='VERIFICAR PAGO';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
-          payBtn.onclick=()=>manualVerify(data.token);
-        }
-      },10000); // Check every 10 seconds
-      
-      // Also listen for page focus (patient comes back from Flow tab)
-      window.addEventListener('focus',function onFocus(){
-        // After returning from payment, do an immediate check
-        setTimeout(async()=>{
-          try{
-            const check=await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/flow-confirm',{
-              method:'POST',headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({token:data.token})
-            });
-            const result=await check.json();
-            if(result.paid){
-              if(payPollInterval){clearInterval(payPollInterval);payPollInterval=null}
-              window.removeEventListener('focus',onFocus);
-              onPaymentConfirmed();
-            }
-          }catch(e){}
-        },2000);
-      });
-      
-    }else{
-      throw new Error(data.error||data.detail?.message||'Error desconocido');
-    }
-  }catch(e){
-    log('FLOW','warn',e.message);
-    payBtn.textContent='QUIERO CERTEZA →';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';
-    payBtn.onclick=goPay;
-    say('Hubo un problema con el sistema de pago. Puedes pagar por WhatsApp o en la clínica.');
-    const fb=document.createElement('div');fb.style.cssText='margin-top:12px;text-align:center';
-    fb.innerHTML=`<a href="https://wa.me/56974157966?text=Hola%2C%20quiero%20pagar%20mi%20evaluación%20MIRO.DX%20${sid}" target="_blank" class="btn-s" style="text-decoration:none;width:100%;justify-content:center">CERTEZA VÍA WHATSAPP →</a>`;
-    payBtn.parentElement.after(fb);
-  }
+  }catch(e){/* silent — el link sigue funcionando aunque falle el track */}
 }
 
-async function manualVerify(token){
-  const payBtn=document.querySelector('.btn-gold');
-  payBtn.textContent='⏳ Verificando...';payBtn.style.opacity='.6';
-  try{
-    const check=await fetch('https://jipldlklzobiytkvxokf.supabase.co/functions/v1/flow-confirm',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({token})
-    });
-    const result=await check.json();
-    if(result.paid){onPaymentConfirmed()}
-    else{payBtn.textContent='NO CONFIRMADO — REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto';say('Aún no recibimos la confirmación. Si ya pagaste, espera unos segundos e intenta de nuevo.')}
-  }catch(e){payBtn.textContent='REINTENTAR';payBtn.style.opacity='1';payBtn.style.pointerEvents='auto'}
-}
-
-function onPaymentConfirmed(){
-  log('FLOW','ok','✓ PAGO CONFIRMADO');
-  document.getElementById('postPayArea').style.display='block';
-  const payBtn=document.querySelector('.btn-gold');
-  if(payBtn){payBtn.textContent='✓ PAGADO';payBtn.style.opacity='.5';payBtn.style.pointerEvents='none';payBtn.style.background='var(--accent)'}
-  say('Pago confirmado. Ahora agenda tu hora con tu especialista. Haz click en el botón agendar.',null,'v');
-}
-
-function goSchedule(){
+async function goSchedule(){
   const m=S.answers.motivo||'';
-  let url,prog,doc;
-  
+  let url='https://ff.healthatom.io/41knMr',prog='EVALUACIÓN GENERAL',doc='Especialista asignado';
+
   if(m.includes('Implantes')){
-    // MIRO ONE — rotate between Montoya and Parada
     const links=[
       {url:'https://ff.healthatom.io/liPHso',doc:'Dr. Carlos Montoya'},
       {url:'https://ff.healthatom.io/KeTeHV',doc:'Dr. Cristóbal Parada'}
@@ -1216,43 +1187,21 @@ function goSchedule(){
     url=pick.url;prog='MIRO ONE';doc=pick.doc;
   }
   else if(m.includes('sonrisa')){
-    // SIMETRÍA Estética — rotate between Rojas, Ambler, San Martín
     const links=[
       {url:'https://ff.healthatom.io/7rnCh6',doc:'Dr. Javier Rojas'},
       {url:'https://ff.healthatom.io/AoOb0U',doc:'Dra. Sofía Ambler'},
-      {url:'https://ff.healthatom.io/d1W000',doc:'Dra. Sofía Ambler (Facial)'},
+      {url:'https://ff.healthatom.io/d1W000',doc:'Dra. Sofía Ambler'},
       {url:'https://ff.healthatom.io/97zg47',doc:'Dra. Camila San Martín'}
     ];
     const pick=links[Math.floor(Math.random()*links.length)];
     url=pick.url;prog='SIMETRÍA';doc=pick.doc;
   }
-  else if(m.includes('Ortodoncia')){
-    url='https://ff.healthatom.io/x2YFuW';prog='ALIGN';doc='Dra. Iardena Sadovnik';
-  }
-  else if(m.includes('Caries')||m.includes('Revisión')){
-    url='https://ff.healthatom.io/yDTGO6';prog='ZEROCARIES';doc='Dra. Isidora Valdes';
-  }
-  else if(m.includes('Segunda')){
-    url='https://ff.healthatom.io/2aFK6y';prog='SEGUNDA OPINIÓN';doc='Dr. Carlos Montoya';
-  }
-  else{
-    // Default: ZeroCaries general
-    url='https://ff.healthatom.io/yDTGO6';prog='EVALUACIÓN GENERAL';doc='Dra. Isidora Valdes';
-  }
+  else if(m.includes('Ortodoncia')){url='https://ff.healthatom.io/x2YFuW';prog='ALIGN';doc='Dra. Iardena Sadovnik';}
+  else if(m.includes('Caries')||m.includes('Revisión')){url='https://ff.healthatom.io/yDTGO6';prog='ZEROCARIES';doc='Dra. Isidora Valdes';}
+  else if(m.includes('Segunda')){url='https://ff.healthatom.io/2aFK6y';prog='SEGUNDA OPINIÓN';doc='Dr. Carlos Montoya';}
 
   log('AGENDA','ok',prog+' → '+doc);
-  
-  // Update the button to show who they'll see
-  const postArea=document.getElementById('postPayArea');
-  if(postArea){
-    postArea.innerHTML=`
-      <div class="mono accent" style="font-size:9px;margin-bottom:8px">✓ PAGO CONFIRMADO</div>
-      <div style="font-size:13px;color:var(--text);margin-bottom:4px">Programa: <strong>${prog}</strong></div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Especialista: ${doc}</div>
-      <a href="${url}" target="_blank" class="btn-p" style="width:100%;justify-content:center;text-decoration:none">AGENDAR CON ${doc.split(' ').pop().toUpperCase()} →</a>
-      <div style="margin-top:8px;font-family:var(--fm);font-size:8px;color:var(--text3)">Se abrirá la agenda de Dentalink</div>
-    `;
-  }
+  trackCTA('dentalink_matched_'+prog.toLowerCase().replace(/\s/g,'_'));
   window.open(url,'_blank');
 }
 
@@ -1372,10 +1321,9 @@ function getFallbackAnswer(q){
 }
 
 function resetAll(){
-  S.name='';S.email='';S.answers={};S.risk=0;S.muted=false;S.photo=null;S.photos=null;S.aiFindings=null;S.flowOrder=null;
+  S.name='';S.rut='';S.email='';S.whatsapp='';S.answers={};S.risk=0;S.muted=false;S.photo=null;S.photos=null;S.aiFindings=null;
   if(S.audio){S.audio.pause();S.audio=null}
   if(sayAbort){sayAbort.abort();sayAbort=null}
-  if(payPollInterval){clearInterval(payPollInterval);payPollInterval=null}
   if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}
   document.getElementById('botAvatar').classList.remove('speaking');
   document.getElementById('vBtn').classList.remove('off');document.getElementById('vIco').textContent='🔊';document.getElementById('vTxt').textContent='RODRIGO';
@@ -1385,15 +1333,14 @@ function resetAll(){
   document.getElementById('gF').style.strokeDashoffset='213.63';document.getElementById('gF').style.stroke='var(--accent)';
   ['scandent','implantx','simetria','zerocaries','armonia','clarity'].forEach(id=>{document.getElementById('c-'+id)?.classList.remove('on');const a=document.getElementById('a-'+id);if(a){a.textContent='—';a.style.color=''}});
   document.getElementById('trans').innerHTML='<div class="bubble"><div class="bubble-label">RODRIGO</div>Listo.</div>';
-  document.getElementById('postPayArea').style.display='none';
   document.getElementById('narrCards')&&(document.getElementById('narrCards').innerHTML='');
   document.getElementById('botChatBody').innerHTML='<div class="bot-msg ai">Hola, soy Rodrigo. ¿En qué puedo ayudarte?</div>';
   document.getElementById('botChat').classList.remove('open');
   document.getElementById('botAvatar').classList.remove('speaking');
   document.getElementById('botNotif').style.display='none';
   stat('Listo');setStep(1);show(0);document.getElementById('mTitle').textContent='MIRO.DX';
-  document.getElementById('nameIn')&&(document.getElementById('nameIn').value='');
-  document.getElementById('emailIn')&&(document.getElementById('emailIn').value='');
+  ['nameIn','rutIn','emailIn','wsIn'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  const errEl=document.getElementById('s1Err');if(errEl)errEl.textContent='';
   document.getElementById('preframe')&&(document.getElementById('preframe').style.display='flex');
 }
 </script>
