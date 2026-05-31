@@ -503,7 +503,7 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
     <div class="screen" id="s-6">
       <div style="max-width:520px;margin:0 auto">
         <div class="qnum">06 · EVALUACIÓN COMPLETA</div>
-        <div style="font-family:var(--fu);font-size:20px;font-weight:700;margin-bottom:6px">Tu pre-evaluación muestra <span class="accent" id="evalN">hallazgos</span>.</div>
+        <div style="font-family:var(--fu);font-size:20px;font-weight:700;margin-bottom:6px"><span id="evalTitle">El siguiente paso es la evaluación clínica.</span></div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.7">Lo que viste aquí es el punto de partida. Lo que viene en la clínica es otra cosa.</div>
         
         <!-- Narration cards container — synced with voice -->
@@ -988,12 +988,22 @@ function compRisk(){let s=28;const a=S.answers;if(a.last_visit==='Más de 3 año
 
 function animGauge(v){const c=213.63,f=document.getElementById('gF'),n=document.getElementById('gN'),l=document.getElementById('gL');f.style.strokeDashoffset=c-(c*v/100);const col=v>65?'var(--warn)':v>40?'#FFA500':'var(--accent)';f.style.stroke=col;n.style.color=col;l.textContent=v>65?'MODERADO':v>40?'BAJO':'PREVENTIVO';let x=0;const t=setInterval(()=>{x=Math.min(x+2,v);n.textContent=x;if(x>=v)clearInterval(t)},18)}
 
-// RESULTS with AI findings or fallback
+// RESULTS — solo muestra hallazgos si hubo análisis IA real con la imagen.
+// Si no hubo imagen procesable, NO inventamos hallazgos: mostramos
+// honestamente que se necesita evaluación presencial.
 function showRes(){
   setStep(5);show(5);document.getElementById('mTitle').textContent='LO QUE ENCONTRAMOS';
-  say('Esto es importante. Lo que estás viendo explica por qué podrías haber recibido diagnósticos diferentes. Y eso cambia completamente el tratamiento.');
   const fn=S.name.split(' ')[0];
-  const findings=S.aiFindings?.findings?.length>0?S.aiFindings.findings.map(f=>({...f,score:f.confidence||50,color:f.level==='alert'?'var(--warn)':f.level==='warn'?'#FFA500':'var(--accent)'})):buildFallback();
+  const hasRealFindings = S.aiFindings?.findings?.length>0;
+
+  if(!hasRealFindings){
+    // CAMINO HONESTO: sin imagen procesable → no hay hallazgos, solo contexto.
+    return renderNoImageResults(fn);
+  }
+
+  // CAMINO CON IA REAL
+  say('Esto es importante. Lo que estás viendo explica por qué podrías haber recibido diagnósticos diferentes. Y eso cambia completamente el tratamiento.');
+  const findings=S.aiFindings.findings.map(f=>({...f,score:f.confidence||50,color:f.level==='alert'?'var(--warn)':f.level==='warn'?'#FFA500':'var(--accent)'}));
   const vis=findings.slice(0,3),hid=findings.slice(3);
   const hasPhoto=S.photo||S.photos?.frontal;
 
@@ -1135,18 +1145,83 @@ function focusFinding(i){
   if(rm){rm.style.transform='scale(1.2)';setTimeout(()=>rm.style.transform='',2000)}
 }
 
-function buildFallback(){
-  const a=S.answers,f=[];
-  f.push({zone:'EVALUACIÓN GENERAL',level:'warn',label:'REQUIERE CONFIRMACIÓN',desc:'Sin imagen disponible, el análisis se basa en tus respuestas. Se recomienda evaluación presencial para diagnóstico preciso.',score:60,color:'#FFA500'});
-  if(a.last_visit==='Más de 3 años'||a.last_visit==='1 a 3 años')f.push({zone:'CONTROL PERIODONTAL',level:'warn',label:'MONITOREAR',desc:'Sin control reciente. Riesgo de acumulación de cálculo y enfermedad periodontal silenciosa.',score:52,color:'#FFA500'});
-  if(a.missing==='1 a 2'||a.missing==='3 o más')f.push({zone:'ANÁLISIS IMPLANTOLÓGICO',level:'warn',label:'CANDIDATO',desc:'Con dientes faltantes, el hueso se reabsorbe. En 12-18 meses podría necesitarse injerto.',score:S.risk>60?82:91,color:'#047857'});
-  f.push({zone:'ZONAS NO EVALUADAS',level:'ok',label:'PENDIENTE',desc:'Requiere imagen o examen presencial.',score:0,color:'var(--line)'});
-  return f;
+// Pantalla honesta cuando no hay imagen procesable:
+// NO inventamos hallazgos. Mostramos el score de riesgo (basado en respuestas
+// reales del paciente) + contexto + CTA claro a evaluación presencial.
+function renderNoImageResults(fn){
+  const rl=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
+  const rlColor=S.risk>65?'var(--warn)':S.risk>40?'#FFA500':'var(--accent)';
+
+  // Resumen del motivo declarado (para conectar con el paciente)
+  const motivo=S.answers.motivo||'';
+  const motivoLine=motivo?`Vienes por <b>${motivo.toLowerCase()}</b>. `:'';
+  const painLine=(S.answers.pain && S.answers.pain!=='No')?`Reportas <b>${S.answers.pain.toLowerCase()}</b>. `:'';
+  const lastLine=(S.answers.last_visit && S.answers.last_visit!=='Menos de 6 meses')?`Tu última visita fue hace <b>${S.answers.last_visit.toLowerCase()}</b>. `:'';
+
+  document.getElementById('resContent').innerHTML=`
+    <div style="margin-bottom:16px">
+      <div class="mono accent" style="font-size:11px;margin-bottom:8px">INFORME · ${sid}</div>
+      <div style="font-family:var(--fu);font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.25">${fn}, esto es lo que sabemos hasta acá.</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">${motivoLine}${painLine}${lastLine}Tu contexto clínico fue registrado.</div>
+    </div>
+
+    <!-- Score de riesgo basado en anamnesis (sí es válido, lo calculamos con tus respuestas) -->
+    <div style="display:flex;align-items:center;gap:18px;padding:18px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
+      <div style="position:relative;width:78px;height:78px;flex-shrink:0">
+        <svg viewBox="0 0 80 80" style="width:100%;transform:rotate(-90deg)">
+          <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line)" stroke-width="5"/>
+          <circle cx="40" cy="40" r="34" fill="none" stroke="${rlColor}" stroke-width="5" stroke-linecap="round" stroke-dasharray="213.63" stroke-dashoffset="${213.63-(213.63*S.risk/100)}"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:20px;font-weight:700;color:${rlColor}">${S.risk}</div>
+      </div>
+      <div style="flex:1">
+        <div class="mono" style="font-size:11px;color:var(--text3);letter-spacing:.08em">SCORE DE RIESGO</div>
+        <div style="font-family:var(--fu);font-size:18px;font-weight:700;color:${rlColor};margin:2px 0">NIVEL ${rl.toUpperCase()}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">Calculado a partir de tus respuestas clínicas (no de imágenes).</div>
+      </div>
+    </div>
+
+    <!-- Mensaje claro: por qué no hay análisis visual -->
+    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
+      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ ANÁLISIS VISUAL NO COMPLETADO</div>
+      <div style="font-size:14px;color:var(--text);line-height:1.55;margin-bottom:10px;font-weight:600">No podemos darte hallazgos clínicos sin imagen.</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.65">
+        MIRO.DX necesita una <b>radiografía panorámica</b> o una <b>foto intraoral clara</b> para detectar hallazgos específicos como caries, pérdida ósea, lesiones o asimetrías.<br><br>
+        Sin esa imagen, cualquier afirmación visual sería una opinión, no evidencia. Y MIRO.DX existe justamente para eso: <b>con evidencia, no con opinión</b>.
+      </div>
+    </div>
+
+    <!-- Qué SÍ se necesita: evaluación presencial -->
+    <div style="padding:16px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
+      <div class="mono accent" style="font-size:11px;letter-spacing:.08em;margin-bottom:10px">EL PASO SIGUIENTE</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.65">
+        La <b>evaluación clínica completa</b> en Clínica Miró incluye radiografía panorámica digital, análisis con IA en vivo y revisión con tu especialista. Solo ahí podemos confirmar o descartar hallazgos reales.
+      </div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-top:18px">
+      <button class="btn-p" onclick="goStep6()" style="flex:1;justify-content:center">RECIBIR MI INFORME Y CONTINUAR →</button>
+    </div>
+    <div class="mono t3" style="font-size:10px;margin-top:12px;line-height:1.7">> Pre-evaluación orientativa · No reemplaza diagnóstico clínico<br>> Ley 20.584 · Derechos y deberes del paciente</div>
+  `;
+
+  // Narración honesta de Rodrigo
+  const rlSpoken=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
+  say(`${fn}, tu score de riesgo basado en tus respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Pero no tenemos imagen para confirmar hallazgos visuales. Para eso necesitamos la evaluación clínica con radiografía.`);
 }
 
-// STEP 6: PAY FIRST → THEN SCHEDULE
+// STEP 6: agendar / WhatsApp / asistencia humana
 async function goStep6(){
-  document.getElementById('evalN').textContent=(S.aiFindings?.findings?.length||3)+' hallazgos';
+  // Titular contextual: distinto si hubo análisis IA real o no.
+  const nFindings=S.aiFindings?.findings?.length||0;
+  const evalTitle=document.getElementById('evalTitle');
+  if(evalTitle){
+    if(nFindings>0){
+      evalTitle.innerHTML=`Tu pre-evaluación muestra <span class="accent">${nFindings} hallazgo${nFindings>1?'s':''}</span>.`;
+    }else{
+      evalTitle.innerHTML=`Para confirmar hallazgos, necesitas <span class="accent">evaluación clínica</span>.`;
+    }
+  }
   setStep(6);show(6);document.getElementById('mTitle').textContent='EVALUACIÓN';
 
   // Narration cards appear synced with voice
