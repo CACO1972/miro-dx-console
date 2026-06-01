@@ -377,10 +377,16 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
     <!-- S2: ANAMNESIS -->
     <div class="screen" id="s-2"><div class="qwrap" id="qWrap"></div></div>
 
-    <!-- S3: CAMERA — 2-step professional capture -->
+    <!-- S3: CAMERA — captura obligatoria, dos opciones: cámara o galería -->
     <div class="screen" id="s-3">
       <div style="max-width:400px;margin:0 auto;text-align:center">
         <div class="qnum">03 · CAPTURA DENTAL INTELIGENTE</div>
+
+        <!-- Mensaje crítico: imagen obligatoria -->
+        <div style="background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.25);border-radius:4px;padding:11px 14px;margin-bottom:14px;text-align:left">
+          <div class="mono accent" style="font-size:11px;letter-spacing:.08em;margin-bottom:5px">📷 IMAGEN REQUERIDA</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.55">MIRO.DX necesita una foto de tu sonrisa para analizar con IA. Sin imagen no hay análisis.</div>
+        </div>
 
         <!-- Step tabs -->
         <div class="cap-tabs">
@@ -479,7 +485,21 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
         <div style="margin-top:8px;font-family:var(--fm);font-size:10px;color:var(--text3)" id="capHint">
           Foto 1 de 2 · Sonríe natural mostrando ambas arcadas
         </div>
-        <button class="btn-ghost" onclick="skipPhoto()" style="margin-top:10px">SALTAR · CONTINUAR SIN FOTO</button>
+
+        <!-- Separador visual + opción alternativa -->
+        <div style="display:flex;align-items:center;gap:10px;margin:18px 0 12px">
+          <div style="flex:1;height:1px;background:var(--line)"></div>
+          <span class="mono" style="font-size:10px;color:var(--text3);letter-spacing:.12em">O</span>
+          <div style="flex:1;height:1px;background:var(--line)"></div>
+        </div>
+
+        <!-- Subir foto desde galería (alternativa si no tiene cámara o no quiere usarla) -->
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this)">
+        <button class="btn-s" onclick="document.getElementById('fileInput').click()" style="width:100%;justify-content:center">📁 SUBIR FOTO DE TU SONRISA</button>
+        <div style="margin-top:8px;font-family:var(--fm);font-size:10px;color:var(--text3);line-height:1.6">
+          Foto reciente · Sonríe natural · Buena iluminación · Dientes visibles
+        </div>
+
         <canvas id="camCanvas" style="display:none"></canvas>
         <canvas id="panoCanvas" style="display:none"></canvas>
       </div>
@@ -849,12 +869,8 @@ function handleFile(input){
   say('Ya tengo tu imagen. Presiona analizar.');};r.readAsDataURL(f);
 }
 
-function skipPhoto(){
-  S.photo=null;S.photos=null;document.getElementById('v-img').textContent='—';
-  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}
-  if(panoInterval){clearInterval(panoInterval);panoInterval=null}
-  runScan();
-}
+// skipPhoto() ELIMINADO — MIRO.DX exige imagen. Sin foto no hay análisis.
+// El usuario debe usar la cámara (capturePhoto) o subir desde galería (handleFile).
 
 async function analyzePhoto(){
   document.getElementById('mTitle').textContent='ANÁLISIS IA';stat('Enviando a HUMANA.AI...');
@@ -1145,9 +1161,11 @@ function focusFinding(i){
   if(rm){rm.style.transform='scale(1.2)';setTimeout(()=>rm.style.transform='',2000)}
 }
 
-// Pantalla honesta cuando no hay imagen procesable:
-// NO inventamos hallazgos. Mostramos el score de riesgo (basado en respuestas
-// reales del paciente) + contexto + CTA claro a evaluación presencial.
+// Pantalla cuando hubo imagen pero el análisis IA no devolvió hallazgos procesables.
+// Esto NO es "el paciente no subió foto" (el flujo ya no permite eso). Es:
+//  - Gemini no logró interpretar la imagen (calidad insuficiente / no es boca clara)
+//  - O hubo error técnico en el pipeline
+// El paciente SÍ envió imagen, así que el mensaje refleja eso con respeto.
 function renderNoImageResults(fn){
   const rl=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
   const rlColor=S.risk>65?'var(--warn)':S.risk>40?'#FFA500':'var(--accent)';
@@ -1157,6 +1175,7 @@ function renderNoImageResults(fn){
   const motivoLine=motivo?`Vienes por <b>${motivo.toLowerCase()}</b>. `:'';
   const painLine=(S.answers.pain && S.answers.pain!=='No')?`Reportas <b>${S.answers.pain.toLowerCase()}</b>. `:'';
   const lastLine=(S.answers.last_visit && S.answers.last_visit!=='Menos de 6 meses')?`Tu última visita fue hace <b>${S.answers.last_visit.toLowerCase()}</b>. `:'';
+  const hasPhoto=S.photo||S.photos?.frontal;
 
   document.getElementById('resContent').innerHTML=`
     <div style="margin-bottom:16px">
@@ -1165,7 +1184,7 @@ function renderNoImageResults(fn){
       <div style="font-size:13px;color:var(--text2);line-height:1.6">${motivoLine}${painLine}${lastLine}Tu contexto clínico fue registrado.</div>
     </div>
 
-    <!-- Score de riesgo basado en anamnesis (sí es válido, lo calculamos con tus respuestas) -->
+    <!-- Score de riesgo basado en anamnesis (válido, viene de respuestas del paciente) -->
     <div style="display:flex;align-items:center;gap:18px;padding:18px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
       <div style="position:relative;width:78px;height:78px;flex-shrink:0">
         <svg viewBox="0 0 80 80" style="width:100%;transform:rotate(-90deg)">
@@ -1177,19 +1196,35 @@ function renderNoImageResults(fn){
       <div style="flex:1">
         <div class="mono" style="font-size:11px;color:var(--text3);letter-spacing:.08em">SCORE DE RIESGO</div>
         <div style="font-family:var(--fu);font-size:18px;font-weight:700;color:${rlColor};margin:2px 0">NIVEL ${rl.toUpperCase()}</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5">Calculado a partir de tus respuestas clínicas (no de imágenes).</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">Calculado a partir de tus respuestas clínicas.</div>
       </div>
     </div>
 
-    <!-- Mensaje claro: por qué no hay análisis visual -->
-    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
-      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ ANÁLISIS VISUAL NO COMPLETADO</div>
-      <div style="font-size:14px;color:var(--text);line-height:1.55;margin-bottom:10px;font-weight:600">No podemos darte hallazgos clínicos sin imagen.</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.65">
-        MIRO.DX necesita una <b>radiografía panorámica</b> o una <b>foto intraoral clara</b> para detectar hallazgos específicos como caries, pérdida ósea, lesiones o asimetrías.<br><br>
-        Sin esa imagen, cualquier afirmación visual sería una opinión, no evidencia. Y MIRO.DX existe justamente para eso: <b>con evidencia, no con opinión</b>.
+    ${hasPhoto?`
+    <!-- Imagen del paciente con mensaje de análisis no concluyente -->
+    <div style="margin-bottom:18px">
+      <div class="mono" style="font-size:11px;color:var(--text3);letter-spacing:.08em;margin-bottom:8px">TU IMAGEN CAPTURADA</div>
+      <div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#000;position:relative">
+        <img src="${S.photos?.frontal||S.photo}" alt="Tu imagen dental" style="width:100%;display:block;max-height:280px;object-fit:cover">
+        <div style="position:absolute;top:8px;right:8px;background:rgba(255,165,0,.9);color:#000;font-family:var(--fm);font-size:10px;padding:4px 8px;border-radius:3px;letter-spacing:.08em">ANÁLISIS NO CONCLUYENTE</div>
       </div>
     </div>
+
+    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
+      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ EL MOTOR IA NO PUDO ANALIZAR CON CERTEZA</div>
+      <div style="font-size:14px;color:var(--text);line-height:1.55;margin-bottom:10px;font-weight:600">Recibimos tu imagen, pero el análisis automatizado no fue concluyente.</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.65">
+        Puede ser por iluminación, ángulo, o porque los dientes no son claramente visibles. Esto pasa con frecuencia y <b>no significa que haya algo malo en tu boca</b>.<br><br>
+        Para darte hallazgos reales necesitamos una <b>radiografía panorámica</b> o examen presencial. Ahí MIRO.DX trabaja con imágenes diagnósticas de calidad clínica.
+      </div>
+    </div>
+    `:`
+    <!-- Caso edge: si por algun motivo llego aca sin foto, mensaje generico -->
+    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
+      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ ANÁLISIS VISUAL PENDIENTE</div>
+      <div style="font-size:14px;color:var(--text);line-height:1.55;font-weight:600">Para darte hallazgos clínicos necesitamos una imagen procesable.</div>
+    </div>
+    `}
 
     <!-- Qué SÍ se necesita: evaluación presencial -->
     <div style="padding:16px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
@@ -1207,7 +1242,11 @@ function renderNoImageResults(fn){
 
   // Narración honesta de Rodrigo
   const rlSpoken=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
-  say(`${fn}, tu score de riesgo basado en tus respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Pero no tenemos imagen para confirmar hallazgos visuales. Para eso necesitamos la evaluación clínica con radiografía.`);
+  if(hasPhoto){
+    say(`${fn}, recibimos tu imagen pero el análisis automatizado no fue concluyente. Tu score basado en respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Para hallazgos certeros necesitamos imagen diagnóstica en la clínica.`);
+  }else{
+    say(`${fn}, tu score basado en respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Para hallazgos visuales necesitamos imagen en la clínica.`);
+  }
 }
 
 // STEP 6: agendar / WhatsApp / asistencia humana
