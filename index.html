@@ -125,6 +125,8 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 /* BUTTONS */
 .btn-p{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-family:var(--fu);font-size:14px;font-weight:700;padding:13px 26px;border-radius:3px;border:none;cursor:pointer;transition:all .15s}
 .btn-p:hover{background:#00f5ae;box-shadow:0 0 22px rgba(0,229,160,.35);transform:translateY(-1px)}
+.btn-p.quality-ok{animation:pulseGlow 1.8s ease-in-out infinite}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 12px rgba(0,229,160,.45)}50%{box-shadow:0 0 28px rgba(0,229,160,.85), 0 0 4px rgba(0,229,160,.3) inset}}
 .btn-s{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--text2);font-family:var(--fu);font-size:14px;border:1px solid var(--line);padding:13px 26px;border-radius:3px;cursor:pointer;text-decoration:none}
 .btn-gold{background:var(--muted);color:#000;font-family:var(--fu);font-size:15px;font-weight:700;padding:15px 32px;border-radius:3px;border:none;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
 .btn-gold:hover{box-shadow:0 0 30px rgba(201,168,124,.3);transform:translateY(-1px)}
@@ -743,17 +745,172 @@ let capStep=1; // 1=frontal, 2=panoramic
 let panoFrames=[];
 let panoInterval=null;
 
+// ════════════════════════════════════════════════════════════════════════════
+// QUALITY LOOP — validación automática de calidad de imagen
+// Cada 2.5s captura un frame chico del video, lo manda a Supabase
+// validate-dental-view (GPT-4o-mini detail:low) y habilita el botón
+// CAPTURAR solo cuando esValida===true.
+// El paciente decide cuándo apretar; el botón solo se activa con calidad OK.
+// ════════════════════════════════════════════════════════════════════════════
+const qualityLoop = {
+  INTERVAL_MS: 2500,
+  ENDPOINT: 'https://jipldlklzobiytkvxokf.supabase.co/functions/v1/validate-dental-view',
+  active: false,
+  inFlight: false,
+  timerId: null,
+  abortCtrl: null,
+  consecutiveValid: 0, // contar OKs consecutivos para evitar falsos positivos
+  lastTickAt: 0,
+
+  start(){
+    if(this.active)return;
+    this.active = true;
+    this.consecutiveValid = 0;
+    log('QUALITY','info','Loop de validación de calidad iniciado');
+    // Primera validación a los 1.5s (espera que el video se estabilice)
+    this.timerId = setTimeout(()=>this.tick(), 1500);
+  },
+
+  stop(){
+    if(!this.active)return;
+    this.active = false;
+    if(this.timerId){clearTimeout(this.timerId);this.timerId=null}
+    if(this.abortCtrl){try{this.abortCtrl.abort()}catch(e){}this.abortCtrl=null}
+    this.inFlight = false;
+    log('QUALITY','info','Loop detenido');
+  },
+
+  // Captura un frame pequeño del video (480px máx, jpeg q=0.55) → base64
+  captureSmallFrame(){
+    const video = document.getElementById('camVideo');
+    if(!video || !video.videoWidth) return null;
+    const MAX_W = 480;
+    const scale = Math.min(1, MAX_W / video.videoWidth);
+    const w = Math.round(video.videoWidth * scale);
+    const h = Math.round(video.videoHeight * scale);
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d');
+    cx.drawImage(video, 0, 0, w, h);
+    // JPEG calidad baja — para validación, no para análisis
+    const dataUrl = c.toDataURL('image/jpeg', 0.55);
+    return dataUrl.split(',')[1]; // solo el base64 sin prefijo
+  },
+
+  async tick(){
+    if(!this.active) return;
+    // Si está en flight, reprogramar
+    if(this.inFlight){
+      this.timerId = setTimeout(()=>this.tick(), this.INTERVAL_MS);
+      return;
+    }
+    // Si la pestaña no es visible, pausar (ahorra costos y batería)
+    if(document.hidden){
+      this.timerId = setTimeout(()=>this.tick(), this.INTERVAL_MS);
+      return;
+    }
+
+    const base64 = this.captureSmallFrame();
+    if(!base64){
+      this.timerId = setTimeout(()=>this.tick(), this.INTERVAL_MS);
+      return;
+    }
+
+    this.inFlight = true;
+    this.abortCtrl = new AbortController();
+    const startedAt = Date.now();
+
+    try{
+      const res = await fetch(this.ENDPOINT, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ imageBase64: base64, viewType: 'frontal' }),
+        signal: this.abortCtrl.signal
+      });
+      const data = await res.json();
+      const dt = Date.now() - startedAt;
+      log('QUALITY','info',`Tick ${dt}ms — esValida:${data.esValida} dientes:${data.dientesVisibles||0}`);
+      this.updateUI(data);
+    } catch(e){
+      if(e.name !== 'AbortError'){
+        log('QUALITY','warn','Tick failed: '+e.message);
+        // En caso de error de red, no penalizar al paciente — habilita botón como fallback
+        this.enableCaptureFallback();
+      }
+    } finally {
+      this.inFlight = false;
+      this.abortCtrl = null;
+      // Reprogramar el siguiente tick
+      if(this.active){
+        this.timerId = setTimeout(()=>this.tick(), this.INTERVAL_MS);
+      }
+    }
+  },
+
+  updateUI(data){
+    const stat = document.getElementById('camStat');
+    const btn = document.getElementById('captBtn');
+    if(!stat || !btn) return;
+
+    if(data.esValida === true){
+      this.consecutiveValid++;
+      // Habilitar botón inmediatamente con primer OK
+      stat.textContent = `✓ Listo · ${data.dientesVisibles||'algunos'} dientes visibles`;
+      stat.className = 'cam-status ready';
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.textContent = '📸 CAPTURAR AHORA';
+      btn.classList.add('quality-ok');
+    } else {
+      this.consecutiveValid = 0;
+      // Mantener deshabilitado, mostrar sugerencia
+      const msg = data.sugerencia || data.mensaje || 'Acércate y muestra tus dientes';
+      stat.textContent = msg.length > 60 ? msg.slice(0,57)+'…' : msg;
+      stat.className = 'cam-status searching';
+      btn.style.opacity = '.4';
+      btn.style.pointerEvents = 'none';
+      btn.textContent = '⏳ AJUSTA LA CÁMARA…';
+      btn.classList.remove('quality-ok');
+    }
+  },
+
+  enableCaptureFallback(){
+    // Si validación falla (red caída), permitir captura manual
+    const stat = document.getElementById('camStat');
+    const btn = document.getElementById('captBtn');
+    if(stat) stat.textContent = 'Validación no disponible — captura manual';
+    if(btn){
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.textContent = '📸 CAPTURAR';
+    }
+  }
+};
+
+// Pausar el loop cuando el navegador esconde la pestaña — ahorra costos
+document.addEventListener('visibilitychange', ()=>{
+  // El loop ya chequea document.hidden en cada tick, pero forzamos abort si hay request en vuelo
+  if(document.hidden && qualityLoop.abortCtrl){
+    try{ qualityLoop.abortCtrl.abort() }catch(e){}
+  }
+});
+
 async function goCamera(){
   setStep(3);show(3);document.getElementById('mTitle').textContent='CAPTURA DENTAL';capStep=1;
-  say('Vamos a capturar dos imágenes de tus dientes. Primero, una foto frontal. Sonríe natural mostrando ambas arcadas. Alinea tu línea media facial con la guía vertical.');
+  say('Vamos a capturar tu sonrisa. Sonríe natural mostrando tus dientes. Espera mientras analizo la calidad de la imagen — el botón se habilitará automáticamente cuando esté lista.');
   try{
     const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}});
     S.stream=stream;document.getElementById('camVideo').srcObject=stream;
-    document.getElementById('camStat').textContent='Sonríe · Muestra dientes';
-    document.getElementById('camStat').className='cam-status ready';
-    document.getElementById('captBtn').style.opacity='1';document.getElementById('captBtn').style.pointerEvents='auto';
+    document.getElementById('camStat').textContent='Buscando dientes…';
+    document.getElementById('camStat').className='cam-status searching';
+    // Botón QUEDA deshabilitado — el loop de validación de calidad lo habilita
+    document.getElementById('captBtn').style.opacity='.4';
+    document.getElementById('captBtn').style.pointerEvents='none';
+    document.getElementById('captBtn').textContent='⏳ ANALIZANDO CALIDAD...';
     document.getElementById('v-img').textContent='CAM';
-    log('CAM','ok','Cámara selfie activa');
+    log('CAM','ok','Cámara selfie activa — validación automática iniciando');
+    // Arrancar loop de validación de calidad (cada 2.5s)
+    qualityLoop.start();
   }catch(e){
     log('CAM','warn',e.message);
     document.getElementById('camStat').textContent='Sin cámara — sube foto';document.getElementById('camStat').className='cam-status searching';
@@ -779,6 +936,9 @@ function switchCapture(step){
 }
 
 function capturePhoto(){
+  // Detener el loop de validación — ya tenemos la foto buena
+  qualityLoop.stop();
+
   const v=document.getElementById('camVideo'),c=document.getElementById('camCanvas'),ctx=c.getContext('2d');
   c.width=v.videoWidth;c.height=v.videoHeight;
   ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0);
@@ -989,11 +1149,17 @@ function requestRetry(reason, detail){
   // Volver al paso de captura
   setStep(3);show(3);document.getElementById('mTitle').textContent='CAPTURA DENTAL';
 
-  // Resetear UI del paso S3 (mostrar botón capturar, ocultar analizar)
+  // Resetear UI del paso S3 — boton sigue DESHABILITADO hasta que el loop diga OK
   const captBtn=document.getElementById('captBtn');
   const analyzeBtn=document.getElementById('analyzeBtn');
   const camPreview=document.getElementById('camPreview');
-  if(captBtn){captBtn.style.display='inline-flex';captBtn.style.opacity='1';captBtn.style.pointerEvents='auto'}
+  if(captBtn){
+    captBtn.style.display='inline-flex';
+    captBtn.style.opacity='.4';
+    captBtn.style.pointerEvents='none';
+    captBtn.textContent='⏳ ANALIZANDO CALIDAD...';
+    captBtn.classList.remove('quality-ok');
+  }
   if(analyzeBtn)analyzeBtn.style.display='none';
   if(camPreview)camPreview.style.display='none';
 
@@ -1002,6 +1168,12 @@ function requestRetry(reason, detail){
 
   // Reabrir cámara si estaba activa
   if(typeof switchCapture==='function')switchCapture(1);
+
+  // Reiniciar el loop de validación de calidad
+  if(S.stream){
+    qualityLoop.stop();
+    setTimeout(()=>qualityLoop.start(), 800);
+  }
 
   // Mensaje hablado de Rodrigo
   const messages={
@@ -1465,6 +1637,8 @@ function getFallbackAnswer(q){
 }
 
 function resetAll(){
+  // Detener loop de validación si está corriendo
+  if(typeof qualityLoop !== 'undefined') qualityLoop.stop();
   S.name='';S.rut='';S.email='';S.whatsapp='';S.answers={};S.risk=0;S.muted=false;S.photo=null;S.photos=null;S.aiFindings=null;
   if(S.audio){S.audio.pause();S.audio=null}
   if(sayAbort){sayAbort.abort();sayAbort=null}
