@@ -897,11 +897,7 @@ async function analyzePhoto(){
       // If validation fails but we have the image, try analysis anyway
     } else if(valData.valid===false || valData.isValid===false){
       log('VALIDATE','warn','Imagen no válida: '+(valData.reason||valData.message||''));
-      say('La imagen no muestra dientes claramente. Necesito que tomes otra foto con mejor iluminación, abriendo bien la boca. Intenta de nuevo.');
-      document.getElementById('captBtn').style.display='inline-flex';
-      document.getElementById('analyzeBtn').style.display='none';
-      if(grid)grid.classList.remove('on');
-      return;
+      return requestRetry('quality', valData.reason||valData.message);
     } else {
       log('VALIDATE','ok','Imagen validada');
     }
@@ -931,7 +927,6 @@ async function analyzePhoto(){
     log('ANALYZE','ok','Análisis completado');
 
     // Map the response to our format
-    // The Edge Function may return different structures, adapt accordingly
     const ai={
       quality: analysisData.quality || analysisData.imageQuality || 'ok',
       quality_note: analysisData.qualityNote || '',
@@ -946,34 +941,112 @@ async function analyzePhoto(){
       summary: analysisData.summary || analysisData.resumen || 'Análisis completado. Se recomienda evaluación presencial.'
     };
 
-    // Quality check
+    // Quality check (Gemini reportó imagen insuficiente)
     if(ai.quality==='insufficient'||ai.quality==='insuficiente'){
-      say('La imagen no tiene calidad suficiente para el análisis. Toma otra foto con más luz, abriendo bien la boca.');
-      document.getElementById('captBtn').style.display='inline-flex';
-      document.getElementById('analyzeBtn').style.display='none';
-      if(grid)grid.classList.remove('on');
-      return;
+      return requestRetry('quality', ai.quality_note);
+    }
+
+    // No findings devuelto = imagen no procesable (no se detectaron dientes/boca claramente)
+    if(!ai.findings || ai.findings.length===0){
+      return requestRetry('no_dental_content');
     }
 
     S.aiFindings=ai;
 
     // Show AI tags on captured image
-    if(ai.findings?.length>0){
-      ai.findings.slice(0,3).forEach((f,i)=>{
-        const tag=document.getElementById('atag'+(i+1)),box=document.getElementById('abox'+(i+1));
-        if(tag){tag.textContent=f.label;tag.className='ai-tag show '+f.level}
-        if(box)box.className='ai-box '+f.level;
-      });
-    }
+    ai.findings.slice(0,3).forEach((f,i)=>{
+      const tag=document.getElementById('atag'+(i+1)),box=document.getElementById('abox'+(i+1));
+      if(tag){tag.textContent=f.label;tag.className='ai-tag show '+f.level}
+      if(box)box.className='ai-box '+f.level;
+    });
     setTimeout(()=>runScan(),2000);
 
   }catch(e){
     log('ENGINE','warn','Error: '+e.message);
     console.error('Analysis error:',e);
-    // Skip to scan with fallback — analysis will use anamnesis data
-    log('FALLBACK','info','Usando análisis basado en respuestas');
-    setTimeout(()=>runScan(),1000);
+    return requestRetry('technical', e.message);
   }
+}
+
+// requestRetry: vuelve al S3 con mensaje contextual.
+// reason: 'quality' | 'no_dental_content' | 'technical'
+function requestRetry(reason, detail){
+  log('RETRY','info','Solicitando nueva imagen: '+reason);
+  // Limpiar imagen y estado del análisis IA
+  S.photo=null;
+  if(S.photos)S.photos={};
+  S.aiFindings=null;
+  document.getElementById('v-img').textContent='—';
+
+  // Apagar el overlay de "análisis"
+  const grid=document.getElementById('camGrid');if(grid)grid.classList.remove('on');
+  // Limpiar las tags IA del overlay
+  ['atag1','atag2','atag3'].forEach(id=>{const t=document.getElementById(id);if(t){t.className='ai-tag';t.textContent=''}});
+  ['abox1','abox2','abox3'].forEach(id=>{const b=document.getElementById(id);if(b)b.className='ai-box'});
+
+  // Volver al paso de captura
+  setStep(3);show(3);document.getElementById('mTitle').textContent='CAPTURA DENTAL';
+
+  // Resetear UI del paso S3 (mostrar botón capturar, ocultar analizar)
+  const captBtn=document.getElementById('captBtn');
+  const analyzeBtn=document.getElementById('analyzeBtn');
+  const camPreview=document.getElementById('camPreview');
+  if(captBtn){captBtn.style.display='inline-flex';captBtn.style.opacity='1';captBtn.style.pointerEvents='auto'}
+  if(analyzeBtn)analyzeBtn.style.display='none';
+  if(camPreview)camPreview.style.display='none';
+
+  // Mostrar banner contextual de retry según el motivo
+  showRetryBanner(reason, detail);
+
+  // Reabrir cámara si estaba activa
+  if(typeof switchCapture==='function')switchCapture(1);
+
+  // Mensaje hablado de Rodrigo
+  const messages={
+    quality: 'La imagen no tiene calidad suficiente para el análisis. Necesito que tomes otra foto con buena luz, abriendo bien la boca y mostrando todos tus dientes.',
+    no_dental_content: 'No pude detectar tu sonrisa claramente en la imagen. Asegúrate de mostrar bien tus dientes con la boca abierta. Intenta de nuevo.',
+    technical: 'Hubo un problema técnico al procesar tu imagen. Por favor, intenta tomar la foto de nuevo.'
+  };
+  say(messages[reason] || messages.quality);
+}
+
+// Inyectar banner visual de retry en el paso S3
+function showRetryBanner(reason, detail){
+  const titles={
+    quality: '📸 IMAGEN POCO NÍTIDA',
+    no_dental_content: '😬 NO VEMOS TU SONRISA',
+    technical: '⚙️ PROBLEMA TÉCNICO'
+  };
+  const subtitles={
+    quality: 'No se ven los dientes con claridad. Necesitamos una foto más nítida.',
+    no_dental_content: 'La imagen no muestra tus dientes claramente. Asegúrate de sonreír abriendo bien la boca.',
+    technical: 'Hubo un error al procesar tu imagen. Por favor intenta de nuevo.'
+  };
+  const tips={
+    quality: 'Tips: buena luz natural, cámara estable, dientes bien visibles, sin sombras fuertes.',
+    no_dental_content: 'Tips: sonrisa amplia, dientes superiores e inferiores visibles, encuadre frontal.',
+    technical: 'Si el problema persiste, puedes contactarnos por WhatsApp.'
+  };
+
+  // Buscar banner existente o crearlo
+  let banner=document.getElementById('retryBanner');
+  if(!banner){
+    banner=document.createElement('div');
+    banner.id='retryBanner';
+    banner.style.cssText='background:rgba(255,165,0,.08);border:1px solid rgba(255,165,0,.35);border-radius:4px;padding:14px;margin-bottom:14px;text-align:left;animation:fadeUp .4s ease both';
+    // Insertar al inicio del contenedor del S3 (justo después del qnum)
+    const s3=document.getElementById('s-3');
+    if(s3){
+      const inner=s3.querySelector('div[style*="max-width"]');
+      const qnum=inner?.querySelector('.qnum');
+      if(qnum)qnum.after(banner);
+    }
+  }
+  banner.innerHTML=`
+    <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:6px">${titles[reason]||titles.quality}</div>
+    <div style="font-size:13px;color:var(--text);line-height:1.55;font-weight:600;margin-bottom:6px">${subtitles[reason]||subtitles.quality}</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.6">${tips[reason]||tips.quality}</div>
+  `;
 }
 
 // SCAN ANIMATION
@@ -1008,16 +1081,18 @@ function animGauge(v){const c=213.63,f=document.getElementById('gF'),n=document.
 // Si no hubo imagen procesable, NO inventamos hallazgos: mostramos
 // honestamente que se necesita evaluación presencial.
 function showRes(){
-  setStep(5);show(5);document.getElementById('mTitle').textContent='LO QUE ENCONTRAMOS';
-  const fn=S.name.split(' ')[0];
-  const hasRealFindings = S.aiFindings?.findings?.length>0;
-
-  if(!hasRealFindings){
-    // CAMINO HONESTO: sin imagen procesable → no hay hallazgos, solo contexto.
-    return renderNoImageResults(fn);
+  // CONTRATO DE FLUJO: showRes solo se llama si hay análisis IA REAL con findings.
+  // Si no hay findings, es un bug — analyzePhoto debió haber llamado a requestRetry().
+  // Como safety net, si por algún motivo llega aquí sin findings, volvemos a captura.
+  if(!S.aiFindings?.findings?.length){
+    log('SHOWRES','warn','Sin findings — redirigiendo a retry');
+    return requestRetry('technical', 'no findings on showRes');
   }
 
-  // CAMINO CON IA REAL
+  setStep(5);show(5);document.getElementById('mTitle').textContent='LO QUE ENCONTRAMOS';
+  const fn=S.name.split(' ')[0];
+
+  // CAMINO CON IA REAL (único camino válido)
   say('Esto es importante. Lo que estás viendo explica por qué podrías haber recibido diagnósticos diferentes. Y eso cambia completamente el tratamiento.');
   const findings=S.aiFindings.findings.map(f=>({...f,score:f.confidence||50,color:f.level==='alert'?'var(--warn)':f.level==='warn'?'#FFA500':'var(--accent)'}));
   const vis=findings.slice(0,3),hid=findings.slice(3);
@@ -1161,93 +1236,6 @@ function focusFinding(i){
   if(rm){rm.style.transform='scale(1.2)';setTimeout(()=>rm.style.transform='',2000)}
 }
 
-// Pantalla cuando hubo imagen pero el análisis IA no devolvió hallazgos procesables.
-// Esto NO es "el paciente no subió foto" (el flujo ya no permite eso). Es:
-//  - Gemini no logró interpretar la imagen (calidad insuficiente / no es boca clara)
-//  - O hubo error técnico en el pipeline
-// El paciente SÍ envió imagen, así que el mensaje refleja eso con respeto.
-function renderNoImageResults(fn){
-  const rl=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
-  const rlColor=S.risk>65?'var(--warn)':S.risk>40?'#FFA500':'var(--accent)';
-
-  // Resumen del motivo declarado (para conectar con el paciente)
-  const motivo=S.answers.motivo||'';
-  const motivoLine=motivo?`Vienes por <b>${motivo.toLowerCase()}</b>. `:'';
-  const painLine=(S.answers.pain && S.answers.pain!=='No')?`Reportas <b>${S.answers.pain.toLowerCase()}</b>. `:'';
-  const lastLine=(S.answers.last_visit && S.answers.last_visit!=='Menos de 6 meses')?`Tu última visita fue hace <b>${S.answers.last_visit.toLowerCase()}</b>. `:'';
-  const hasPhoto=S.photo||S.photos?.frontal;
-
-  document.getElementById('resContent').innerHTML=`
-    <div style="margin-bottom:16px">
-      <div class="mono accent" style="font-size:11px;margin-bottom:8px">INFORME · ${sid}</div>
-      <div style="font-family:var(--fu);font-size:22px;font-weight:700;margin-bottom:6px;line-height:1.25">${fn}, esto es lo que sabemos hasta acá.</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.6">${motivoLine}${painLine}${lastLine}Tu contexto clínico fue registrado.</div>
-    </div>
-
-    <!-- Score de riesgo basado en anamnesis (válido, viene de respuestas del paciente) -->
-    <div style="display:flex;align-items:center;gap:18px;padding:18px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
-      <div style="position:relative;width:78px;height:78px;flex-shrink:0">
-        <svg viewBox="0 0 80 80" style="width:100%;transform:rotate(-90deg)">
-          <circle cx="40" cy="40" r="34" fill="none" stroke="var(--line)" stroke-width="5"/>
-          <circle cx="40" cy="40" r="34" fill="none" stroke="${rlColor}" stroke-width="5" stroke-linecap="round" stroke-dasharray="213.63" stroke-dashoffset="${213.63-(213.63*S.risk/100)}"/>
-        </svg>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:20px;font-weight:700;color:${rlColor}">${S.risk}</div>
-      </div>
-      <div style="flex:1">
-        <div class="mono" style="font-size:11px;color:var(--text3);letter-spacing:.08em">SCORE DE RIESGO</div>
-        <div style="font-family:var(--fu);font-size:18px;font-weight:700;color:${rlColor};margin:2px 0">NIVEL ${rl.toUpperCase()}</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5">Calculado a partir de tus respuestas clínicas.</div>
-      </div>
-    </div>
-
-    ${hasPhoto?`
-    <!-- Imagen del paciente con mensaje de análisis no concluyente -->
-    <div style="margin-bottom:18px">
-      <div class="mono" style="font-size:11px;color:var(--text3);letter-spacing:.08em;margin-bottom:8px">TU IMAGEN CAPTURADA</div>
-      <div style="border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#000;position:relative">
-        <img src="${S.photos?.frontal||S.photo}" alt="Tu imagen dental" style="width:100%;display:block;max-height:280px;object-fit:cover">
-        <div style="position:absolute;top:8px;right:8px;background:rgba(255,165,0,.9);color:#000;font-family:var(--fm);font-size:10px;padding:4px 8px;border-radius:3px;letter-spacing:.08em">ANÁLISIS NO CONCLUYENTE</div>
-      </div>
-    </div>
-
-    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
-      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ EL MOTOR IA NO PUDO ANALIZAR CON CERTEZA</div>
-      <div style="font-size:14px;color:var(--text);line-height:1.55;margin-bottom:10px;font-weight:600">Recibimos tu imagen, pero el análisis automatizado no fue concluyente.</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.65">
-        Puede ser por iluminación, ángulo, o porque los dientes no son claramente visibles. Esto pasa con frecuencia y <b>no significa que haya algo malo en tu boca</b>.<br><br>
-        Para darte hallazgos reales necesitamos una <b>radiografía panorámica</b> o examen presencial. Ahí MIRO.DX trabaja con imágenes diagnósticas de calidad clínica.
-      </div>
-    </div>
-    `:`
-    <!-- Caso edge: si por algun motivo llego aca sin foto, mensaje generico -->
-    <div style="padding:18px;border:1px solid rgba(255,165,0,.3);border-radius:6px;margin-bottom:18px;background:rgba(255,165,0,.04)">
-      <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:8px">⚠ ANÁLISIS VISUAL PENDIENTE</div>
-      <div style="font-size:14px;color:var(--text);line-height:1.55;font-weight:600">Para darte hallazgos clínicos necesitamos una imagen procesable.</div>
-    </div>
-    `}
-
-    <!-- Qué SÍ se necesita: evaluación presencial -->
-    <div style="padding:16px;border:1px solid var(--line);border-radius:6px;margin-bottom:18px;background:var(--bg3)">
-      <div class="mono accent" style="font-size:11px;letter-spacing:.08em;margin-bottom:10px">EL PASO SIGUIENTE</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.65">
-        La <b>evaluación clínica completa</b> en Clínica Miró incluye radiografía panorámica digital, análisis con IA en vivo y revisión con tu especialista. Solo ahí podemos confirmar o descartar hallazgos reales.
-      </div>
-    </div>
-
-    <div style="display:flex;gap:9px;margin-top:18px">
-      <button class="btn-p" onclick="goStep6()" style="flex:1;justify-content:center">RECIBIR MI INFORME Y CONTINUAR →</button>
-    </div>
-    <div class="mono t3" style="font-size:10px;margin-top:12px;line-height:1.7">> Pre-evaluación orientativa · No reemplaza diagnóstico clínico<br>> Ley 20.584 · Derechos y deberes del paciente</div>
-  `;
-
-  // Narración honesta de Rodrigo
-  const rlSpoken=S.risk>65?'moderado':S.risk>40?'bajo':'preventivo';
-  if(hasPhoto){
-    say(`${fn}, recibimos tu imagen pero el análisis automatizado no fue concluyente. Tu score basado en respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Para hallazgos certeros necesitamos imagen diagnóstica en la clínica.`);
-  }else{
-    say(`${fn}, tu score basado en respuestas es ${S.risk} sobre cien, nivel ${rlSpoken}. Para hallazgos visuales necesitamos imagen en la clínica.`);
-  }
-}
 
 // STEP 6: agendar / WhatsApp / asistencia humana
 async function goStep6(){
