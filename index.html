@@ -390,12 +390,6 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
           <div style="font-size:13px;color:var(--text2);line-height:1.55">MIRO.DX necesita una foto de tu sonrisa para analizar con IA. Sin imagen no hay análisis.</div>
         </div>
 
-        <!-- Step tabs -->
-        <div class="cap-tabs">
-          <div class="cap-tab active" id="capTab1" onclick="switchCapture(1)">① FRONTAL<span class="tab-check">✓</span></div>
-          <div class="cap-tab" id="capTab2" onclick="switchCapture(2)">② BARRIDO PANORÁMICO<span class="tab-check">✓</span></div>
-        </div>
-
         <!-- Capture area -->
         <div class="cam-wrap" id="camWrap">
           <video id="camVideo" autoplay playsinline muted></video>
@@ -480,12 +474,10 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 
         <!-- Controls -->
         <div style="display:flex;gap:8px;justify-content:center;margin-top:14px" id="camControls">
-          <button class="btn-p" id="captBtn" onclick="capturePhoto()" style="opacity:.4;pointer-events:none">📸 CAPTURAR FRONTAL</button>
-          <button class="btn-p" id="scanBtn" onclick="startPanoScan()" style="display:none">🔄 INICIAR BARRIDO</button>
-          <button class="btn-s" id="analyzeBtn" onclick="analyzePhoto()" style="display:none">ANALIZAR CON IA →</button>
+          <button class="btn-p" id="captBtn" onclick="capturePhoto()" style="opacity:.4;pointer-events:none">📸 CAPTURAR</button>
         </div>
-        <div style="margin-top:8px;font-family:var(--fm);font-size:10px;color:var(--text3)" id="capHint">
-          Foto 1 de 2 · Sonríe natural mostrando ambas arcadas
+        <div style="margin-top:8px;font-family:var(--fm);font-size:11px;color:var(--text3);line-height:1.5" id="capHint">
+          El botón se habilita automáticamente cuando la calidad sea buena
         </div>
 
         <!-- Separador visual + opción alternativa -->
@@ -943,10 +935,10 @@ function capturePhoto(){
   c.width=v.videoWidth;c.height=v.videoHeight;
   ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(v,0,0);
   const data=c.toDataURL('image/jpeg',0.85);
-  
+
   if(!S.photos)S.photos={};
   S.photos.frontal=data;S.photo=data;
-  
+
   // Flash effect
   const wrap=document.getElementById('camWrap');
   const flash=document.createElement('div');
@@ -955,19 +947,23 @@ function capturePhoto(){
   setTimeout(()=>flash.style.opacity='0',50);
   setTimeout(()=>flash.remove(),400);
 
-  // Show preview briefly
+  // Mostrar preview
   const prev=document.getElementById('camPreview');prev.src=data;prev.style.display='block';
-  document.getElementById('camStat').textContent='✓ Frontal capturada';document.getElementById('camStat').className='cam-status captured';
-  document.getElementById('capTab1').className='cap-tab done';
-  log('CAM','ok','Frontal OK');
-  
-  // After 1.5s, switch to panoramic
-  say('Frontal capturada. Ahora la segunda: abre la boca y mueve la cabeza lentamente de izquierda a derecha. Presiona iniciar barrido cuando estés listo.');
-  setTimeout(()=>{
-    prev.style.display='none';
-    document.getElementById('camVideo').style.display='block';
-    switchCapture(2);
-  },2000);
+  document.getElementById('camVideo').style.display='none';
+  document.getElementById('camStat').textContent='✓ Imagen capturada';
+  document.getElementById('camStat').className='cam-status captured';
+  document.getElementById('v-img').textContent='OK';
+  log('CAM','ok','Foto OK · disparando análisis IA');
+
+  // Detener stream de cámara
+  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}
+
+  // Ocultar botón captura
+  document.getElementById('captBtn').style.display='none';
+
+  // Análisis automático tras 1s (deja ver el preview brevemente)
+  say('Imagen capturada. Procesando con IA…');
+  setTimeout(()=>analyzePhoto(),1000);
 }
 
 function startPanoScan(){
@@ -1022,11 +1018,30 @@ function startPanoScan(){
 
 function handleFile(input){
   const f=input.files[0];if(!f)return;
-  const r=new FileReader();r.onload=e=>{S.photo=e.target.result;if(!S.photos)S.photos={};S.photos.frontal=S.photo;
-  document.getElementById('camPreview').src=S.photo;document.getElementById('camPreview').style.display='block';
-  document.getElementById('analyzeBtn').style.display='inline-flex';document.getElementById('captBtn').style.display='none';
-  document.getElementById('v-img').textContent='OK';log('PHOTO','ok',f.name);
-  say('Ya tengo tu imagen. Presiona analizar.');};r.readAsDataURL(f);
+  // Detener loop de calidad si estaba corriendo (subir foto bypasea validación frame-by-frame)
+  if(typeof qualityLoop!=='undefined') qualityLoop.stop();
+  // Detener stream si estaba activo
+  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null}
+
+  const r=new FileReader();
+  r.onload=e=>{
+    S.photo=e.target.result;
+    if(!S.photos)S.photos={};
+    S.photos.frontal=S.photo;
+    const prev=document.getElementById('camPreview');
+    if(prev){prev.src=S.photo;prev.style.display='block'}
+    const vid=document.getElementById('camVideo');
+    if(vid)vid.style.display='none';
+    document.getElementById('captBtn').style.display='none';
+    const stat=document.getElementById('camStat');
+    if(stat){stat.textContent='✓ Imagen cargada';stat.className='cam-status captured'}
+    document.getElementById('v-img').textContent='OK';
+    log('PHOTO','ok',f.name);
+    say('Imagen cargada. Procesando con IA…');
+    // Analizar automáticamente
+    setTimeout(()=>analyzePhoto(),900);
+  };
+  r.readAsDataURL(f);
 }
 
 // skipPhoto() ELIMINADO — MIRO.DX exige imagen. Sin foto no hay análisis.
