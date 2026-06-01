@@ -936,17 +936,19 @@ async function analyzePhoto(){
         level: f.level || f.severity || f.nivel || 'warn',
         label: f.label || f.etiqueta || f.title || 'EVALUAR',
         desc: f.desc || f.description || f.descripcion || '',
-        confidence: f.confidence || f.confianza || f.score || 50
+        confidence: f.confidence || f.confianza || f.score || 50,
+        confidenceTier: f.confidenceTier || f.confianza_nivel || (f.confidence>=70?'alta':f.confidence>=40?'media':'baja'),
+        limitacion: f.limitacion || f.limitation || ''
       })),
       summary: analysisData.summary || analysisData.resumen || 'Análisis completado. Se recomienda evaluación presencial.'
     };
 
-    // Quality check (Gemini reportó imagen insuficiente)
-    if(ai.quality==='insufficient'||ai.quality==='insuficiente'){
+    // Quality check (motor IA reportó imagen insuficiente)
+    if(ai.quality==='insufficient'||ai.quality==='insuficiente'||ai.quality==='deficiente'){
       return requestRetry('quality', ai.quality_note);
     }
 
-    // No findings devuelto = imagen no procesable (no se detectaron dientes/boca claramente)
+    // No findings devuelto = imagen no procesable o sin hallazgos visibles
     if(!ai.findings || ai.findings.length===0){
       return requestRetry('no_dental_content');
     }
@@ -1154,12 +1156,20 @@ function showRes(){
     <div style="font-family:var(--fm);font-size:11px;color:var(--text3);margin-bottom:10px;letter-spacing:.08em">${hasPhoto?'TOCA UN MARCADOR O HALLAZGO PARA VER EL VÍNCULO':'HALLAZGOS'}</div>
 
     <div id="findingsContainer">
-    ${vis.map((f,i)=>`<div class="finding" id="fd-${i}" style="animation-delay:${i*180}ms"
+    ${vis.map((f,i)=>{
+      const tier=(f.confidenceTier||'').toLowerCase();
+      const tierBadge=tier==='alta'
+        ? '<span class="mono" style="font-size:9px;background:rgba(0,229,160,.15);color:var(--accent);padding:2px 6px;border-radius:2px;letter-spacing:.08em">CONFIANZA ALTA</span>'
+        : tier==='media'
+        ? '<span class="mono" style="font-size:9px;background:rgba(255,165,0,.15);color:#FFA500;padding:2px 6px;border-radius:2px;letter-spacing:.08em">A EVALUAR</span>'
+        : '';
+      return `<div class="finding" id="fd-${i}" style="animation-delay:${i*180}ms"
       onmouseenter="highlightMarker(${i})" onmouseleave="unhighlightMarker(${i})" onclick="focusFinding(${i})">
-      <div class="fhdr"><span style="display:flex;align-items:center"><span class="f-num ${f.level}">${i+1}</span><span class="fzone">${f.zone}</span></span><span class="badge ${f.level}">${f.label}</span></div>
+      <div class="fhdr"><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="f-num ${f.level}">${i+1}</span><span class="fzone">${f.zone}</span>${tierBadge}</span><span class="badge ${f.level}">${f.label}</span></div>
       <div class="fdesc">${f.desc}</div>
+      ${f.limitacion?`<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-left:2px solid var(--line);border-radius:2px;font-size:11px;color:var(--text3);line-height:1.55"><span class="mono" style="font-size:9px;letter-spacing:.08em;color:var(--text3)">LIMITACIÓN CLÍNICA</span><br>${f.limitacion}</div>`:''}
       ${f.score?`<div class="fscore"><div class="sbar"><div class="sfill" style="width:0%;background:${f.color}"></div></div><span class="sval">${f.score}%</span></div>`:''}
-    </div>`).join('')}
+    </div>`}).join('')}
     ${hid.length?`<div style="position:relative;overflow:hidden;margin-top:4px">
       ${hid.map((f,i)=>`<div style="opacity:.12;filter:blur(2px);padding:10px;border:1px solid var(--line);border-radius:3px;margin-bottom:4px;background:var(--bg3)">
         <span class="mono" style="font-size:11px">${f.zone} — ${f.label}</span>
@@ -1173,7 +1183,12 @@ function showRes(){
     <div style="display:flex;gap:9px;margin-top:18px">
       <button class="btn-p" onclick="goStep6()" style="flex:1">CONOCER LA EVALUACIÓN COMPLETA →</button>
     </div>
-    <div class="mono t3" style="font-size:10px;margin-top:9px">Pre-evaluación orientativa · No reemplaza diagnóstico clínico · Ley 20.584</div>`;
+    <div style="margin-top:14px;padding:12px;background:rgba(255,165,0,.06);border:1px solid rgba(255,165,0,.2);border-radius:4px">
+      <div class="mono" style="font-size:10px;color:#FFA500;letter-spacing:.08em;margin-bottom:5px">⚠ AVISO CLÍNICO IMPORTANTE</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.6">
+        Esto es una <b>pre-evaluación orientativa basada en IA visual</b>. No reemplaza un diagnóstico clínico. La radiografía panorámica y el examen presencial son indispensables para confirmar o descartar cada hallazgo. Ley 20.584 — Derechos y deberes del paciente.
+      </div>
+    </div>`;
 
   // Mobile gauge visibility
   if(window.innerWidth<=768){const mg=document.querySelector('.mobile-gauge');if(mg)mg.style.display='flex';}
