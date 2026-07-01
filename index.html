@@ -1086,7 +1086,16 @@ async function analyzePhoto(){
   const SUPA='https://jipldlklzobiytkvxokf.supabase.co/functions/v1';
 
   try{
-    const base64=S.photo.split(',')[1];
+    // Validación defensiva del formato de imagen
+    if(!S.photo || typeof S.photo!=='string'){
+      throw new Error('No hay imagen para analizar');
+    }
+    const parts=S.photo.split(',');
+    const base64 = parts.length>1 ? parts[1] : parts[0];
+    if(!base64 || base64.length<100){
+      throw new Error('Imagen inválida (base64 muy corto)');
+    }
+    log('ENGINE','info','Imagen: '+Math.round(base64.length/1024)+' KB base64');
 
     // STEP 1: Validate dental view
     log('VALIDATE','info','Verificando imagen...');
@@ -1095,22 +1104,30 @@ async function analyzePhoto(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({imageBase64:base64,viewType:'frontal'})
     });
-    const valData=await valRes.json();
-    
-    if(valData.error){
-      log('VALIDATE','warn',valData.error);
-      // If validation fails but we have the image, try analysis anyway
-    } else if(valData.valid===false || valData.isValid===false){
-      log('VALIDATE','warn','Imagen no válida: '+(valData.reason||valData.message||''));
-      return requestRetry('quality', valData.reason||valData.message);
+    if(!valRes.ok){
+      const txt=await valRes.text().catch(()=>'');
+      log('VALIDATE','warn','HTTP '+valRes.status+(txt?': '+txt.slice(0,120):''));
+      // Si validate cae, seguimos al análisis igual (validate es opcional)
     } else {
-      log('VALIDATE','ok','Imagen validada');
+      const valData=await valRes.json().catch(err=>({error:'parse-error:'+err.message}));
+
+      if(valData.error){
+        log('VALIDATE','warn',valData.error);
+        // No bloqueamos: seguimos al análisis
+      } else if(valData.valid===false || valData.isValid===false || valData.esValida===false){
+        // FIX: agregado 'esValida' que es lo que devuelve el backend real
+        const reason = valData.reason || valData.message || valData.mensaje || valData.sugerencia || 'imagen no apta';
+        log('VALIDATE','warn','Imagen no válida: '+reason);
+        return requestRetry('quality', reason);
+      } else {
+        log('VALIDATE','ok','Imagen validada ('+(valData.dientesVisibles||'?')+' dientes visibles)');
+      }
     }
 
     // STEP 2: Full dental analysis via analyze-dental Edge Function
     log('SCANDENT','info','Analizando con motor clínico...');
     stat('Analizando con HUMANA.AI...');
-    
+
     const analysisRes=await fetch(`${SUPA}/analyze-dental`,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1122,8 +1139,18 @@ async function analyzePhoto(){
         mode:'pre-evaluation'
       })
     });
-    const analysisData=await analysisRes.json();
-    
+
+    // Defensivo: chequear status HTTP antes de parsear JSON
+    if(!analysisRes.ok){
+      const errTxt=await analysisRes.text().catch(()=>'');
+      log('ANALYZE','warn','HTTP '+analysisRes.status);
+      throw new Error('Motor IA HTTP '+analysisRes.status+(errTxt?': '+errTxt.slice(0,120):''));
+    }
+
+    const analysisData=await analysisRes.json().catch(err=>{
+      throw new Error('Respuesta IA no parseable: '+err.message);
+    });
+
     if(analysisData.error){
       log('ANALYZE','warn',analysisData.error);
       throw new Error(analysisData.error);
@@ -1133,23 +1160,24 @@ async function analyzePhoto(){
 
     // Map the response to our format
     const ai={
-      quality: analysisData.quality || analysisData.imageQuality || 'ok',
-      quality_note: analysisData.qualityNote || '',
+      // FIX: agregado 'calidadImagen' que es lo que devuelve el backend real
+      quality: analysisData.quality || analysisData.calidadImagen || analysisData.imageQuality || 'ok',
+      quality_note: analysisData.qualityNote || analysisData.mensajeGeneral || '',
       visible_zones: analysisData.visibleZones || analysisData.visible_zones || analysisData.zones || [],
       findings: (analysisData.findings || analysisData.hallazgos || []).map(f=>({
-        zone: f.zone || f.zona || f.area || 'ZONA NO ESPECIFICADA',
+        zone: f.zone || f.zona || f.ubicacion || f.area || 'ZONA NO ESPECIFICADA',
         level: f.level || f.severity || f.nivel || 'warn',
-        label: f.label || f.etiqueta || f.title || 'EVALUAR',
+        label: f.label || f.tipo || f.etiqueta || f.title || 'EVALUAR',
         desc: f.desc || f.description || f.descripcion || '',
         confidence: f.confidence || f.confianza || f.score || 50,
-        confidenceTier: f.confidenceTier || f.confianza_nivel || (f.confidence>=70?'alta':f.confidence>=40?'media':'baja'),
-        limitacion: f.limitacion || f.limitation || ''
+        confidenceTier: f.confidenceTier || f.confianza_nivel || (typeof f.confianza==='string'?f.confianza:(f.confidence>=70?'alta':f.confidence>=40?'media':'baja')),
+        limitacion: f.limitacion || f.limitation || f.recomendacionEspecifica || ''
       })),
-      summary: analysisData.summary || analysisData.resumen || 'Análisis completado. Se recomienda evaluación presencial.'
+      summary: analysisData.summary || analysisData.mensajeGeneral || analysisData.resumen || 'Análisis completado. Se recomienda evaluación presencial.'
     };
 
     // Quality check (motor IA reportó imagen insuficiente)
-    if(ai.quality==='insufficient'||ai.quality==='insuficiente'||ai.quality==='deficiente'){
+    if(ai.quality==='insufficient'||ai.quality==='insuficiente'||ai.quality==='deficiente'||ai.quality==='mala'){
       return requestRetry('quality', ai.quality_note);
     }
 
@@ -1159,6 +1187,7 @@ async function analyzePhoto(){
     }
 
     S.aiFindings=ai;
+    log('ENGINE','ok',ai.findings.length+' hallazgos detectados');
 
     // Show AI tags on captured image
     ai.findings.slice(0,3).forEach((f,i)=>{
@@ -1170,7 +1199,7 @@ async function analyzePhoto(){
 
   }catch(e){
     log('ENGINE','warn','Error: '+e.message);
-    console.error('Analysis error:',e);
+    console.error('[analyzePhoto] Analysis error:',e);
     return requestRetry('technical', e.message);
   }
 }
@@ -1265,6 +1294,7 @@ function showRetryBanner(reason, detail){
     <div class="mono" style="font-size:11px;color:#FFA500;letter-spacing:.08em;margin-bottom:6px">${titles[reason]||titles.quality}</div>
     <div style="font-size:13px;color:var(--text);line-height:1.55;font-weight:600;margin-bottom:6px">${subtitles[reason]||subtitles.quality}</div>
     <div style="font-size:12px;color:var(--text2);line-height:1.6">${tips[reason]||tips.quality}</div>
+    ${detail?`<div class="mono" style="font-size:10px;color:var(--text3);letter-spacing:.04em;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);opacity:.7">${String(detail).slice(0,180)}</div>`:''}
   `;
 }
 
